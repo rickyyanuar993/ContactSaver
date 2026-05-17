@@ -53,10 +53,10 @@
                         android:layout_height="48dp"
                         android:layout_weight="1"
                         android:text="📊 Statistik"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textColor="#0F172A"
                         android:backgroundTint="#818CF8"
-                        android:layout_marginEnd="8dp"/>
+                        android:layout_marginEnd="6dp"/>
 
                     <Button
                         android:id="@+id/btnGoBackup"
@@ -64,11 +64,23 @@
                         android:layout_height="48dp"
                         android:layout_weight="1"
                         android:text="💾 Backup"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textColor="#0F172A"
-                        android:backgroundTint="#F59E0B"/>
+                        android:backgroundTint="#F59E0B"
+                        android:layout_marginEnd="6dp"/>
+
+                    <Button
+                        android:id="@+id/btnGoSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="⚙️ Setting"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#64748B"/>
                 </LinearLayout>
 
+                <!-- LANGKAH 1 -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -99,12 +111,74 @@
                     android:gravity="center"
                     android:layout_marginBottom="28dp"/>
 
+                <!-- LANGKAH 2 -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="LANGKAH 2 — PROSES &amp; SIMPAN"
+                    android:text="LANGKAH 2 — CEK &amp; VALIDASI FILE"
                     android:textSize="11sp"
-                    android:textColor="#38BDF8"
+                    android:textColor="#818CF8"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnAnalyze"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="🔍  Analisis File"
+                    android:textSize="15sp"
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#818CF8"
+                    android:enabled="false"
+                    android:layout_marginBottom="12dp"/>
+
+                <TextView
+                    android:id="@+id/tvAnalyzeStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Pilih file terlebih dahulu"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="12dp"/>
+
+                <ProgressBar
+                    android:id="@+id/progressAnalyze"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminateTint="#818CF8"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp"/>
+
+                <!-- Analyze Result Card -->
+                <LinearLayout
+                    android:id="@+id/layoutAnalyzeResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:layout_marginBottom="20dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvAnalyzeResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#E2E8F0"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
+
+                <!-- LANGKAH 3 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 3 — SIMPAN KONTAK UNIK"
+                    android:textSize="11sp"
+                    android:textColor="#34D399"
                     android:letterSpacing="0.1"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"/>
@@ -113,7 +187,7 @@
                     android:id="@+id/btnProcess"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:text="⚡  Proses Kontak"
+                    android:text="⚡  Simpan Kontak Unik"
                     android:textSize="15sp"
                     android:textColor="#0F172A"
                     android:backgroundTint="#34D399"
@@ -124,7 +198,7 @@
                     android:id="@+id/tvStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Pilih file untuk memulai"
+                    android:text="Selesaikan langkah 1 dan 2 dulu"
                     android:textColor="#94A3B8"
                     android:textSize="14sp"
                     android:gravity="center"
@@ -186,7 +260,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:layout_marginTop="20dp"
-                    android:layout_marginBottom="20dp">
+                    android:layout_marginBottom="16dp">
                     <Button
                         android:id="@+id/btnBackFromStats"
                         android:layout_width="wrap_content"
@@ -204,6 +278,69 @@
                         android:textSize="22sp"
                         android:textColor="#38BDF8"
                         android:textStyle="bold"/>
+                </LinearLayout>
+
+                <!-- Filter Sumber Kontak -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🔽 FILTER SUMBER KONTAK"
+                    android:textSize="11sp"
+                    android:textColor="#94A3B8"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="16dp"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
+                        <CheckBox android:id="@+id/chkGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
+                        <CheckBox android:id="@+id/chkPhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Memori HP" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
+                        <CheckBox android:id="@+id/chkSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SIM Card" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
+                        <CheckBox android:id="@+id/chkWa" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#F59E0B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="off" android:textColor="#64748B" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
+                        <CheckBox android:id="@+id/chkWaBusiness" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#F59E0B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp Business" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="off" android:textColor="#64748B" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                        <CheckBox android:id="@+id/chkOther" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#94A3B8"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Sumber Lain (SDN, SPRD, dll)" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="off" android:textColor="#64748B" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnApplyFilter"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="🔄 Terapkan Filter &amp; Hitung Ulang"
+                        android:textSize="13sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#38BDF8"
+                        android:layout_marginTop="14dp"/>
                 </LinearLayout>
 
                 <ProgressBar
@@ -348,7 +485,6 @@
                     android:layout_gravity="center"
                     android:layout_marginBottom="16dp"/>
 
-                <!-- Info Card -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -366,7 +502,6 @@
                         android:lineSpacingMultiplier="1.6"/>
                 </LinearLayout>
 
-                <!-- Backup Buttons -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -409,7 +544,6 @@
                     android:lineSpacingMultiplier="1.4"
                     android:layout_marginBottom="20dp"/>
 
-                <!-- Status Result -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -425,6 +559,144 @@
                         android:textSize="13sp"
                         android:fontFamily="monospace"
                         android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- ═══ HALAMAN SETTINGS ═══ -->
+    <LinearLayout
+        android:id="@+id/layoutSettings"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="24dp">
+                    <Button
+                        android:id="@+id/btnBackFromSettings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="← Kembali"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#64748B"
+                        android:layout_marginEnd="12dp"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="⚙️ Pengaturan"
+                        android:textSize="22sp"
+                        android:textColor="#94A3B8"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🎯 PRIORITAS HAPUS DUPLIKAT"
+                    android:textSize="11sp"
+                    android:textColor="#EF4444"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="6dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Urutan 1 = DIPERTAHANKAN. Duplikat dari sumber prioritas rendah yang dihapus."
+                    android:textColor="#64748B"
+                    android:textSize="12sp"
+                    android:lineSpacingMultiplier="1.4"
+                    android:layout_marginBottom="12dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="16dp"
+                    android:layout_marginBottom="20dp">
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="12dp">
+                        <TextView android:layout_width="32dp" android:layout_height="wrap_content" android:text="1️⃣" android:textSize="18sp"/>
+                        <Spinner android:id="@+id/spinnerPriority1" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:background="#0F172A" android:popupBackground="#1E293B"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" ✅keep" android:textColor="#34D399" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="12dp">
+                        <TextView android:layout_width="32dp" android:layout_height="wrap_content" android:text="2️⃣" android:textSize="18sp"/>
+                        <Spinner android:id="@+id/spinnerPriority2" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:background="#0F172A" android:popupBackground="#1E293B"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="12dp">
+                        <TextView android:layout_width="32dp" android:layout_height="wrap_content" android:text="3️⃣" android:textSize="18sp"/>
+                        <Spinner android:id="@+id/spinnerPriority3" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:background="#0F172A" android:popupBackground="#1E293B"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="12dp">
+                        <TextView android:layout_width="32dp" android:layout_height="wrap_content" android:text="4️⃣" android:textSize="18sp"/>
+                        <Spinner android:id="@+id/spinnerPriority4" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:background="#0F172A" android:popupBackground="#1E293B"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                        <TextView android:layout_width="32dp" android:layout_height="wrap_content" android:text="5️⃣" android:textSize="18sp"/>
+                        <Spinner android:id="@+id/spinnerPriority5" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:background="#0F172A" android:popupBackground="#1E293B"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" 🗑️hapus" android:textColor="#EF4444" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnSaveSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="💾 Simpan Pengaturan"
+                        android:textSize="14sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#34D399"
+                        android:layout_marginTop="16dp"/>
+
+                    <TextView
+                        android:id="@+id/tvSettingsStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#34D399"
+                        android:textSize="13sp"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="16dp"
+                    android:layout_marginBottom="40dp">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="ℹ️ Cara kerja prioritas:\n\nJika ada duplikat antara Google dan HP, maka yang dari sumber prioritas lebih rendah yang akan dihapus.\n\nContoh: Google = 1, HP = 3\n→ Kontak HP yang dihapus, Google dipertahankan."
+                        android:textColor="#64748B"
+                        android:textSize="13sp"
+                        android:lineSpacingMultiplier="1.5"/>
                 </LinearLayout>
 
             </LinearLayout>
