@@ -122,6 +122,57 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"/>
 
+                <!-- Filter sumber cek duplikat -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="14dp"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔍 Anggap 'sudah ada' jika nomor ditemukan di:"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkAnalyzeGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkAnalyzePhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Memori HP" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkAnalyzeSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SIM Card" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkAnalyzeWa" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#F59E0B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="off" android:textColor="#64748B" android:textSize="11sp"/>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                        <CheckBox android:id="@+id/chkAnalyzeWaBiz" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#F59E0B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp Business" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="off" android:textColor="#64748B" android:textSize="11sp"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="💡 WA/WA Bisnis dimatikan by default — nomor yang ada di WA tapi belum ada di kontak HP tetap dianggap baru."
+                        android:textColor="#475569"
+                        android:textSize="11sp"
+                        android:lineSpacingMultiplier="1.4"
+                        android:layout_marginTop="8dp"/>
+                </LinearLayout>
+
                 <Button
                     android:id="@+id/btnAnalyze"
                     android:layout_width="match_parent"
@@ -182,6 +233,87 @@
                     android:letterSpacing="0.1"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"/>
+
+                <!-- Pilih tujuan simpan -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="14dp"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="💾 Simpan kontak ke:"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="10dp"/>
+
+                    <RadioGroup
+                        android:id="@+id/rgSaveDestination"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <RadioButton
+                            android:id="@+id/rbSavePhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="📱 Memori HP (lokal, tidak sync)"
+                            android:textColor="#E2E8F0"
+                            android:textSize="13sp"
+                            android:buttonTint="#34D399"
+                            android:checked="true"
+                            android:layout_marginBottom="8dp"/>
+
+                        <RadioButton
+                            android:id="@+id/rbSaveGoogle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="☁️ Google Account (akan sync ke cloud)"
+                            android:textColor="#E2E8F0"
+                            android:textSize="13sp"
+                            android:buttonTint="#34D399"/>
+                    </RadioGroup>
+
+                    <LinearLayout
+                        android:id="@+id/layoutGoogleAccountPicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="10dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Akun: "
+                            android:textColor="#94A3B8"
+                            android:textSize="13sp"/>
+
+                        <Spinner
+                            android:id="@+id/spinnerGoogleAccount"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:popupBackground="#1E293B"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvSaveDestNote"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="💡 Kontak tersimpan lokal di HP, tidak otomatis sync ke Google."
+                        android:textColor="#475569"
+                        android:textSize="11sp"
+                        android:lineSpacingMultiplier="1.4"
+                        android:layout_marginTop="8dp"/>
+                </LinearLayout>
 
                 <Button
                     android:id="@+id/btnProcess"

@@ -1,6 +1,7 @@
 package com.contactsaver;
 
 import android.Manifest;
+import android.accounts.AccountManager;
 import android.app.AlertDialog;
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
@@ -46,9 +47,14 @@ public class MainActivity extends AppCompatActivity {
 
     // Main page
     private Button btnPickFile, btnAnalyze, btnProcess, btnGoStats, btnGoBackup, btnGoSettings;
-    private TextView tvFileName, tvStatus, tvResult, tvAnalyzeStatus, tvAnalyzeResult;
+    private TextView tvFileName, tvStatus, tvResult, tvAnalyzeStatus, tvAnalyzeResult, tvSaveDestNote;
     private ProgressBar progressBar, progressAnalyze;
-    private LinearLayout layoutResult, layoutAnalyzeResult;
+    private LinearLayout layoutResult, layoutAnalyzeResult, layoutGoogleAccountPicker;
+    private CheckBox chkAnalyzeGoogle, chkAnalyzePhone, chkAnalyzeSim, chkAnalyzeWa, chkAnalyzeWaBiz;
+    private android.widget.RadioGroup rgSaveDestination;
+    private android.widget.RadioButton rbSavePhone, rbSaveGoogle;
+    private Spinner spinnerGoogleAccount;
+    private List<android.accounts.Account> googleAccounts = new ArrayList<>();
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
@@ -108,10 +114,21 @@ public class MainActivity extends AppCompatActivity {
         tvResult             = findViewById(R.id.tvResult);
         tvAnalyzeStatus      = findViewById(R.id.tvAnalyzeStatus);
         tvAnalyzeResult      = findViewById(R.id.tvAnalyzeResult);
+        tvSaveDestNote       = findViewById(R.id.tvSaveDestNote);
         progressBar          = findViewById(R.id.progressBar);
         progressAnalyze      = findViewById(R.id.progressAnalyze);
         layoutResult         = findViewById(R.id.layoutResult);
         layoutAnalyzeResult  = findViewById(R.id.layoutAnalyzeResult);
+        layoutGoogleAccountPicker = findViewById(R.id.layoutGoogleAccountPicker);
+        chkAnalyzeGoogle     = findViewById(R.id.chkAnalyzeGoogle);
+        chkAnalyzePhone      = findViewById(R.id.chkAnalyzePhone);
+        chkAnalyzeSim        = findViewById(R.id.chkAnalyzeSim);
+        chkAnalyzeWa         = findViewById(R.id.chkAnalyzeWa);
+        chkAnalyzeWaBiz      = findViewById(R.id.chkAnalyzeWaBiz);
+        rgSaveDestination    = findViewById(R.id.rgSaveDestination);
+        rbSavePhone          = findViewById(R.id.rbSavePhone);
+        rbSaveGoogle         = findViewById(R.id.rbSaveGoogle);
+        spinnerGoogleAccount = findViewById(R.id.spinnerGoogleAccount);
 
         // Stats
         tvStatsTotal         = findViewById(R.id.tvStatsTotal);
@@ -151,6 +168,16 @@ public class MainActivity extends AppCompatActivity {
 
         setupSpinners();
         loadSettings();
+        loadGoogleAccounts();
+
+        // Save destination toggle
+        rgSaveDestination.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean isGoogle = (checkedId == R.id.rbSaveGoogle);
+            layoutGoogleAccountPicker.setVisibility(isGoogle ? View.VISIBLE : View.GONE);
+            tvSaveDestNote.setText(isGoogle
+                ? "⚠️ Kontak akan sync ke Google — pastikan kamu pilih akun yang benar."
+                : "💡 Kontak tersimpan lokal di HP, tidak otomatis sync ke Google.");
+        });
 
         // Listeners Main
         btnPickFile.setOnClickListener(v -> pickFile());
@@ -257,6 +284,38 @@ public class MainActivity extends AppCompatActivity {
         tvSettingsStatus.setText("");
     }
 
+    private void loadGoogleAccounts() {
+        try {
+            android.accounts.Account[] accounts = AccountManager.get(this)
+                .getAccountsByType("com.google");
+            googleAccounts.clear();
+            googleAccounts.addAll(Arrays.asList(accounts));
+
+            if (googleAccounts.isEmpty()) {
+                rbSaveGoogle.setEnabled(false);
+                rbSaveGoogle.setText("☁️ Google Account (tidak ada akun Google di HP)");
+            } else {
+                String[] names = new String[googleAccounts.size()];
+                for (int i = 0; i < googleAccounts.size(); i++) names[i] = googleAccounts.get(i).name;
+                ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                        android.R.layout.simple_spinner_item, names) {
+                    @Override public View getView(int pos, View cv, android.view.ViewGroup p) {
+                        View v = super.getView(pos, cv, p);
+                        ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setTextSize(13); return v;
+                    }
+                    @Override public View getDropDownView(int pos, View cv, android.view.ViewGroup p) {
+                        View v = super.getDropDownView(pos, cv, p);
+                        ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
+                    }
+                };
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerGoogleAccount.setAdapter(adapter);
+            }
+        } catch (Exception e) {
+            rbSaveGoogle.setEnabled(false);
+        }
+    }
+
     private void requestPermissions() {
         List<String> needed = new ArrayList<>();
         String[] perms = {
@@ -313,9 +372,36 @@ public class MainActivity extends AppCompatActivity {
         layoutAnalyzeResult.setVisibility(View.GONE);
         tvAnalyzeStatus.setText("⏳ Membaca kontak di HP...");
 
+        final boolean inclGoogle = chkAnalyzeGoogle.isChecked();
+        final boolean inclPhone  = chkAnalyzePhone.isChecked();
+        final boolean inclSim    = chkAnalyzeSim.isChecked();
+        final boolean inclWa     = chkAnalyzeWa.isChecked();
+        final boolean inclWaBiz  = chkAnalyzeWaBiz.isChecked();
+
         executor.execute(() -> {
             try {
-                Set<String> existing = getExistingContactPhones();
+                // Baca semua kontak lalu filter sesuai pilihan user
+                List<PhoneContact> allContacts = getAllContactsWithSource();
+                Set<String> existing = new HashSet<>();
+                for (PhoneContact c : allContacts) {
+                    String src = resolveSource(c.accountType);
+                    if (src.equals(SRC_GOOGLE)  && !inclGoogle) continue;
+                    if (src.equals(SRC_PHONE)   && !inclPhone)  continue;
+                    if (src.equals(SRC_SIM)     && !inclSim)    continue;
+                    if (src.equals(SRC_WA)      && !inclWa)     continue;
+                    if (src.equals(SRC_WA_BIZ)  && !inclWaBiz)  continue;
+                    if (c.phone != null) existing.add(normalizePhone(c.phone));
+                }
+
+                // Build label sumber yang dicek
+                List<String> srcChecked = new ArrayList<>();
+                if (inclGoogle) srcChecked.add("Google");
+                if (inclPhone)  srcChecked.add("HP");
+                if (inclSim)    srcChecked.add("SIM");
+                if (inclWa)     srcChecked.add("WA");
+                if (inclWaBiz)  srcChecked.add("WA Bisnis");
+                final String srcLabel = srcChecked.isEmpty() ? "tidak ada" : String.join(", ", srcChecked);
+
                 mainHandler.post(() -> tvAnalyzeStatus.setText("⏳ Membaca file..."));
                 String fn = getFileName(selectedFileUri).toLowerCase();
                 List<ContactEntry> fileContacts = fn.endsWith(".vcf") || fn.endsWith(".vcard")
@@ -333,7 +419,7 @@ public class MainActivity extends AppCompatActivity {
                 final int total = fileContacts.size();
                 final int dupCount = dupList.size();
                 final int uniqueCount = toSave.size();
-                analyzedToSave = toSave; // simpan untuk langkah 3
+                analyzedToSave = toSave;
 
                 mainHandler.post(() -> {
                     progressAnalyze.setVisibility(View.GONE);
@@ -344,10 +430,11 @@ public class MainActivity extends AppCompatActivity {
                     tvAnalyzeResult.setText(
                         "📊 HASIL ANALISIS FILE\n\n" +
                         "📁 Total kontak di file   : " + total + " kontak\n" +
-                        "🔁 Sudah ada di HP (skip) : " + dupCount + " kontak\n" +
+                        "🔍 Dicek duplikat dari    : " + srcLabel + "\n" +
+                        "🔁 Sudah ada (skip)       : " + dupCount + " kontak\n" +
                         "✨ Baru & unik             : " + uniqueCount + " kontak\n\n" +
                         (uniqueCount > 0
-                            ? "➡️ Langkah 3: Tap 'Simpan Kontak Unik'\n   untuk menyimpan " + uniqueCount + " kontak baru."
+                            ? "➡️ Langkah 3: Pilih tujuan simpan\n   lalu tap 'Simpan Kontak Unik'."
                             : "ℹ️ Semua kontak di file sudah ada di HP.")
                     );
                     if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru untuk disimpan.");
@@ -369,28 +456,49 @@ public class MainActivity extends AppCompatActivity {
         if (analyzedToSave == null || analyzedToSave.isEmpty()) {
             Toast.makeText(this, "Lakukan analisis dulu!", Toast.LENGTH_SHORT).show(); return;
         }
+
+        // Tentukan tujuan simpan
+        final String accountType;
+        final String accountName;
+        final String destLabel;
+        if (rbSaveGoogle.isChecked()) {
+            if (googleAccounts.isEmpty()) {
+                Toast.makeText(this, "Tidak ada akun Google!", Toast.LENGTH_SHORT).show(); return;
+            }
+            int sel = spinnerGoogleAccount.getSelectedItemPosition();
+            android.accounts.Account acc = googleAccounts.get(sel < 0 ? 0 : sel);
+            accountType = acc.type;       // "com.google"
+            accountName = acc.name;       // email
+            destLabel   = "Google (" + acc.name + ")";
+        } else {
+            accountType = null;
+            accountName = null;
+            destLabel   = "Memori HP";
+        }
+
         btnProcess.setEnabled(false);
         btnAnalyze.setEnabled(false);
         progressBar.setVisibility(View.VISIBLE);
-        tvStatus.setText("⏳ Menyimpan " + analyzedToSave.size() + " kontak...");
+        tvStatus.setText("⏳ Menyimpan " + analyzedToSave.size() + " kontak ke " + destLabel + "...");
         layoutResult.setVisibility(View.GONE);
 
         final List<ContactEntry> toSave = new ArrayList<>(analyzedToSave);
         executor.execute(() -> {
             try {
-                int saved = saveContacts(toSave);
+                int saved = saveContacts(toSave, accountType, accountName);
                 mainHandler.post(() -> {
                     progressBar.setVisibility(View.GONE);
-                    btnProcess.setEnabled(false); // sudah tersimpan, reset
+                    btnProcess.setEnabled(false);
                     btnAnalyze.setEnabled(true);
                     analyzedToSave = null;
                     tvStatus.setText("✅ Selesai!");
                     layoutResult.setVisibility(View.VISIBLE);
                     tvResult.setText(
                         "📊 HASIL SIMPAN\n\n" +
-                        "✨ Kontak unik      : " + toSave.size() + " kontak\n" +
-                        "💾 Berhasil disimpan: " + saved + " kontak\n" +
-                        (saved < toSave.size() ? "⚠️ Gagal simpan     : " + (toSave.size() - saved) + " kontak" : "")
+                        "📂 Disimpan ke         : " + destLabel + "\n" +
+                        "✨ Kontak unik          : " + toSave.size() + " kontak\n" +
+                        "💾 Berhasil disimpan   : " + saved + " kontak\n" +
+                        (saved < toSave.size() ? "⚠️ Gagal simpan       : " + (toSave.size() - saved) + " kontak" : "")
                     );
                 });
             } catch (Exception e) {
@@ -514,8 +622,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Build a Set of rawContactIds that will be DELETED (merah) and KEPT-duplicate (orange)
-        // For each duplicateGroup: sort by priority → index 0 = kept (orange if dup), rest = deleted (merah)
+        // Build sets of IDs: will-be-deleted (merah) and kept-but-duplicate (orange)
         Set<Long> toDeleteIds = new HashSet<>();
         Set<Long> keptDupIds  = new HashSet<>();
 
@@ -532,25 +639,7 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 1; i < sorted.size(); i++) toDeleteIds.add(sorted.get(i).rawContactId);
         }
 
-        // Build dialog layout
-        android.widget.ScrollView sv = new android.widget.ScrollView(this);
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int)(16 * getResources().getDisplayMetrics().density);
-        container.setPadding(pad, pad, pad, pad);
-        sv.addView(container);
-
-        // Legend
-        LinearLayout legend = new LinearLayout(this);
-        legend.setOrientation(LinearLayout.HORIZONTAL);
-        legend.setPadding(0, 0, 0, pad);
-        addLegendItem(legend, "🔴 Akan dihapus", 0xFFEF4444);
-        addLegendItem(legend, "  🟠 Dipertahankan (dup)", 0xFFF97316);
-        addLegendItem(legend, "  🟢 Unik", 0xFF34D399);
-        container.addView(legend);
-
-        // Sort contacts: duplicates first (grouped), then uniques
-        // We'll show all contacts sorted by name
+        // Sort contacts by name
         List<PhoneContact> sorted = new ArrayList<>(lastFilteredContacts);
         sorted.sort((a, b) -> {
             String na = a.name == null ? "" : a.name;
@@ -558,82 +647,143 @@ public class MainActivity extends AppCompatActivity {
             return na.compareToIgnoreCase(nb);
         });
 
-        int[] counts = {0, 0, 0}; // merah, orange, hijau
+        // Count for title
+        int cRed = 0, cOrange = 0, cGreen = 0;
         for (PhoneContact c : sorted) {
-            int color;
-            String label;
-            if (toDeleteIds.contains(c.rawContactId)) {
-                color = 0xFFEF4444; label = "🔴 HAPUS"; counts[0]++;
-            } else if (keptDupIds.contains(c.rawContactId)) {
-                color = 0xFFF97316; label = "🟠 DUPLIKAT"; counts[1]++;
-            } else {
-                color = 0xFF34D399; label = "🟢 UNIK"; counts[2]++;
-            }
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.VERTICAL);
-            row.setBackgroundColor(0xFF1E293B);
-            int rowPad = (int)(10 * getResources().getDisplayMetrics().density);
-            int rowMargin = (int)(6 * getResources().getDisplayMetrics().density);
-            row.setPadding(rowPad, rowPad, rowPad, rowPad);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 0, 0, rowMargin);
-            row.setLayoutParams(lp);
-
-            // Color bar on left via left border workaround: wrap in horizontal layout
-            LinearLayout rowOuter = new LinearLayout(this);
-            rowOuter.setOrientation(LinearLayout.HORIZONTAL);
-            rowOuter.setLayoutParams(lp);
-
-            android.view.View colorBar = new android.view.View(this);
-            LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(
-                (int)(4 * getResources().getDisplayMetrics().density),
-                LinearLayout.LayoutParams.MATCH_PARENT);
-            colorBar.setLayoutParams(barLp);
-            colorBar.setBackgroundColor(color);
-            rowOuter.addView(colorBar);
-
-            row.setLayoutParams(new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            rowOuter.addView(row);
-
-            // Name
-            TextView tvName = new TextView(this);
-            tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
-            tvName.setTextColor(0xFFE2E8F0);
-            tvName.setTextSize(14);
-            tvName.setTypeface(null, android.graphics.Typeface.BOLD);
-            row.addView(tvName);
-
-            // Phone
-            TextView tvPhone = new TextView(this);
-            tvPhone.setText("📞 " + (c.phone != null ? c.phone : "-"));
-            tvPhone.setTextColor(0xFF94A3B8);
-            tvPhone.setTextSize(12);
-            row.addView(tvPhone);
-
-            // Source + Google account name
-            String src = resolveSource(c.accountType);
-            String srcDisplay = src;
-            if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty()) {
-                srcDisplay = src + " (" + c.accountName + ")";
-            }
-            TextView tvSrc = new TextView(this);
-            tvSrc.setText("📂 " + srcDisplay + "   " + label);
-            tvSrc.setTextColor(color);
-            tvSrc.setTextSize(11);
-            row.addView(tvSrc);
-
-            container.addView(rowOuter);
+            if (toDeleteIds.contains(c.rawContactId)) cRed++;
+            else if (keptDupIds.contains(c.rawContactId)) cOrange++;
+            else cGreen++;
         }
 
-        String title = "📋 Daftar Kontak  🔴" + counts[0] + " 🟠" + counts[1] + " 🟢" + counts[2];
-        new AlertDialog.Builder(this)
-            .setTitle(title)
-            .setView(sv)
+        float dp = getResources().getDisplayMetrics().density;
+        int pad = (int)(12 * dp);
+
+        // Legend header
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setBackgroundColor(0xFF0F172A);
+        header.setPadding(pad, pad, pad, pad);
+
+        LinearLayout legendRow = new LinearLayout(this);
+        legendRow.setOrientation(LinearLayout.HORIZONTAL);
+        addLegendItem(legendRow, "🔴 Hapus  ", 0xFFEF4444);
+        addLegendItem(legendRow, "🟠 Dup dipertahankan  ", 0xFFF97316);
+        addLegendItem(legendRow, "🟢 Unik", 0xFF34D399);
+        header.addView(legendRow);
+
+        TextView tvCount = new TextView(this);
+        tvCount.setText("Total: " + sorted.size() + " kontak  |  🔴" + cRed + "  🟠" + cOrange + "  🟢" + cGreen);
+        tvCount.setTextColor(0xFF64748B);
+        tvCount.setTextSize(11);
+        tvCount.setPadding(0, (int)(6*dp), 0, 0);
+        header.addView(tvCount);
+
+        // ListView with ArrayAdapter — recycles views automatically, handles 100k+ contacts
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setBackgroundColor(0xFF0F172A);
+        listView.setDivider(null);
+        listView.setDividerHeight((int)(4 * dp));
+
+        final Set<Long> finalToDelete = toDeleteIds;
+        final Set<Long> finalKeptDup  = keptDupIds;
+
+        android.widget.ArrayAdapter<PhoneContact> adapter = new android.widget.ArrayAdapter<PhoneContact>(
+                this, 0, sorted) {
+            @Override
+            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                // ViewHolder pattern for smooth scrolling
+                ViewHolder vh;
+                if (convertView == null) {
+                    LinearLayout rowOuter = new LinearLayout(getContext());
+                    rowOuter.setOrientation(LinearLayout.HORIZONTAL);
+
+                    android.view.View bar = new android.view.View(getContext());
+                    LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams((int)(4*dp), LinearLayout.LayoutParams.MATCH_PARENT);
+                    bar.setLayoutParams(barLp);
+
+                    LinearLayout inner = new LinearLayout(getContext());
+                    inner.setOrientation(LinearLayout.VERTICAL);
+                    inner.setBackgroundColor(0xFF1E293B);
+                    inner.setPadding((int)(10*dp), (int)(8*dp), (int)(10*dp), (int)(8*dp));
+                    inner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+                    TextView tvName  = new TextView(getContext());
+                    tvName.setTextSize(13); tvName.setTextColor(0xFFE2E8F0);
+                    tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    TextView tvPhone = new TextView(getContext());
+                    tvPhone.setTextSize(11); tvPhone.setTextColor(0xFF94A3B8);
+
+                    TextView tvSrc   = new TextView(getContext());
+                    tvSrc.setTextSize(10);
+
+                    inner.addView(tvName);
+                    inner.addView(tvPhone);
+                    inner.addView(tvSrc);
+
+                    rowOuter.addView(bar);
+                    rowOuter.addView(inner);
+                    convertView = rowOuter;
+
+                    vh = new ViewHolder();
+                    vh.bar = bar; vh.tvName = tvName; vh.tvPhone = tvPhone; vh.tvSrc = tvSrc;
+                    convertView.setTag(vh);
+                } else {
+                    vh = (ViewHolder) convertView.getTag();
+                }
+
+                PhoneContact c = getItem(position);
+                int color;
+                String label;
+                if (finalToDelete.contains(c.rawContactId)) {
+                    color = 0xFFEF4444; label = "🔴 HAPUS";
+                } else if (finalKeptDup.contains(c.rawContactId)) {
+                    color = 0xFFF97316; label = "🟠 DUPLIKAT";
+                } else {
+                    color = 0xFF34D399; label = "🟢 UNIK";
+                }
+
+                vh.bar.setBackgroundColor(color);
+                vh.tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+                vh.tvPhone.setText("📞 " + (c.phone != null ? c.phone : "-"));
+
+                String src = resolveSource(c.accountType);
+                String srcDisplay = src;
+                if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty())
+                    srcDisplay = src + " (" + c.accountName + ")";
+                vh.tvSrc.setText("📂 " + srcDisplay + "   " + label);
+                vh.tvSrc.setTextColor(color);
+
+                return convertView;
+            }
+        };
+
+        listView.setAdapter(adapter);
+
+        // Wrap header + listview in a LinearLayout
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(header);
+        root.addView(listView);
+
+        // Make dialog fullscreen-ish
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("📋 Daftar Kontak (" + sorted.size() + ")")
+            .setView(root)
             .setPositiveButton("Tutup", null)
-            .show();
+            .create();
+
+        dialog.setOnShowListener(d -> {
+            // Give ListView most of screen height
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            listView.setMinimumHeight((int)(screenH * 0.65f));
+        });
+        dialog.show();
+    }
+
+    static class ViewHolder {
+        android.view.View bar;
+        TextView tvName, tvPhone, tvSrc;
     }
 
     private void addLegendItem(LinearLayout parent, String text, int color) {
@@ -928,14 +1078,14 @@ public class MainActivity extends AppCompatActivity {
         r.close(); return list;
     }
 
-    private int saveContacts(List<ContactEntry> contacts) {
+    private int saveContacts(List<ContactEntry> contacts, String accountType, String accountName) {
         int saved = 0;
         for (ContactEntry c : contacts) {
             try {
                 ArrayList<ContentProviderOperation> ops = new ArrayList<>();
                 ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null).build());
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName).build());
                 ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
