@@ -52,9 +52,12 @@ public class MainActivity extends AppCompatActivity {
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
-    private Button btnDeleteDuplicates, btnBackFromStats, btnApplyFilter;
+    private Button btnDeleteDuplicates, btnBackFromStats, btnApplyFilter, btnViewContacts;
     private ProgressBar progressStats;
     private CheckBox chkGoogle, chkPhone, chkSim, chkWa, chkWaBusiness, chkOther;
+
+    // Filtered contacts list (for "Lihat Kontak" dialog)
+    private List<PhoneContact> lastFilteredContacts = new ArrayList<>();
 
     // Backup page
     private TextView tvBackupInfo, tvBackupStatus;
@@ -120,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
         progressStats        = findViewById(R.id.progressStats);
         tvStatsStatus        = findViewById(R.id.tvStatsStatus);
         btnApplyFilter       = findViewById(R.id.btnApplyFilter);
+        btnViewContacts      = findViewById(R.id.btnViewContacts);
         chkGoogle            = findViewById(R.id.chkGoogle);
         chkPhone             = findViewById(R.id.chkPhone);
         chkSim               = findViewById(R.id.chkSim);
@@ -160,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
         btnBackFromStats.setOnClickListener(v -> showPage(layoutMain));
         btnDeleteDuplicates.setOnClickListener(v -> confirmDeleteDuplicates());
         btnApplyFilter.setOnClickListener(v -> openStatsPage());
+        btnViewContacts.setOnClickListener(v -> showContactListDialog());
 
         // Listeners Backup
         btnBackFromBackup.setOnClickListener(v -> showPage(layoutMain));
@@ -409,6 +414,7 @@ public class MainActivity extends AppCompatActivity {
         tvStatsSource.setText("⏳ Memuat sumber...");
         tvStatsStatus.setText("");
         btnDeleteDuplicates.setEnabled(false);
+        btnViewContacts.setEnabled(false);
         progressStats.setVisibility(View.VISIBLE);
 
         // Baca filter checkbox
@@ -455,25 +461,40 @@ public class MainActivity extends AppCompatActivity {
                 }
                 int uniqueCount = total - dupCount;
 
+                // Build source map with Google account name info
                 Map<String, Integer> srcMap = new LinkedHashMap<>();
+                Map<String, Set<String>> googleAccounts = new LinkedHashMap<>();
                 for (PhoneContact c : filtered) {
                     String src = resolveSource(c.accountType);
                     srcMap.put(src, srcMap.getOrDefault(src, 0) + 1);
+                    if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty()) {
+                        if (!googleAccounts.containsKey(src)) googleAccounts.put(src, new LinkedHashSet<>());
+                        googleAccounts.get(src).add(c.accountName);
+                    }
                 }
                 StringBuilder sb = new StringBuilder();
-                for (Map.Entry<String, Integer> e : srcMap.entrySet())
-                    sb.append("• ").append(e.getKey()).append(": ").append(e.getValue()).append(" kontak\n");
+                for (Map.Entry<String, Integer> e : srcMap.entrySet()) {
+                    sb.append("• ").append(e.getKey()).append(": ").append(e.getValue()).append(" kontak");
+                    if (e.getKey().equals(SRC_GOOGLE) && googleAccounts.containsKey(SRC_GOOGLE)) {
+                        sb.append("\n  📧 Akun: ");
+                        sb.append(String.join(", ", googleAccounts.get(SRC_GOOGLE)));
+                    }
+                    sb.append("\n");
+                }
 
                 final int fTotal = total, fDup = dupCount, fUniq = uniqueCount;
                 final String fSrc = sb.toString().trim();
+                final List<PhoneContact> fFiltered = filtered;
 
                 mainHandler.post(() -> {
+                    lastFilteredContacts = fFiltered;
                     progressStats.setVisibility(View.GONE);
                     tvStatsTotal.setText("📱 Total Kontak (filter): " + fTotal);
                     tvStatsUnique.setText("✨ Unik: " + fUniq + " kontak");
                     tvStatsDuplicate.setText("🔁 Duplikat: " + fDup + " kontak");
                     tvStatsSource.setText("📂 Sumber Kontak:\n" + fSrc);
                     btnDeleteDuplicates.setEnabled(fDup > 0);
+                    btnViewContacts.setEnabled(fTotal > 0);
                     if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat!");
                 });
             } catch (Exception e) {
@@ -483,6 +504,144 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    // ─── LIHAT KONTAK DIALOG ─────────────────────────────────────────────────────
+
+    private void showContactListDialog() {
+        if (lastFilteredContacts.isEmpty()) {
+            Toast.makeText(this, "Tidak ada kontak untuk ditampilkan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Build a Set of rawContactIds that will be DELETED (merah) and KEPT-duplicate (orange)
+        // For each duplicateGroup: sort by priority → index 0 = kept (orange if dup), rest = deleted (merah)
+        Set<Long> toDeleteIds = new HashSet<>();
+        Set<Long> keptDupIds  = new HashSet<>();
+
+        for (DuplicateGroup g : duplicateGroups) {
+            List<PhoneContact> sorted = new ArrayList<>(g.contacts);
+            sorted.sort((a, b) -> {
+                int ia = priorityOrder.indexOf(resolveSource(a.accountType));
+                int ib = priorityOrder.indexOf(resolveSource(b.accountType));
+                if (ia < 0) ia = priorityOrder.size();
+                if (ib < 0) ib = priorityOrder.size();
+                return Integer.compare(ia, ib);
+            });
+            keptDupIds.add(sorted.get(0).rawContactId);
+            for (int i = 1; i < sorted.size(); i++) toDeleteIds.add(sorted.get(i).rawContactId);
+        }
+
+        // Build dialog layout
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int)(16 * getResources().getDisplayMetrics().density);
+        container.setPadding(pad, pad, pad, pad);
+        sv.addView(container);
+
+        // Legend
+        LinearLayout legend = new LinearLayout(this);
+        legend.setOrientation(LinearLayout.HORIZONTAL);
+        legend.setPadding(0, 0, 0, pad);
+        addLegendItem(legend, "🔴 Akan dihapus", 0xFFEF4444);
+        addLegendItem(legend, "  🟠 Dipertahankan (dup)", 0xFFF97316);
+        addLegendItem(legend, "  🟢 Unik", 0xFF34D399);
+        container.addView(legend);
+
+        // Sort contacts: duplicates first (grouped), then uniques
+        // We'll show all contacts sorted by name
+        List<PhoneContact> sorted = new ArrayList<>(lastFilteredContacts);
+        sorted.sort((a, b) -> {
+            String na = a.name == null ? "" : a.name;
+            String nb = b.name == null ? "" : b.name;
+            return na.compareToIgnoreCase(nb);
+        });
+
+        int[] counts = {0, 0, 0}; // merah, orange, hijau
+        for (PhoneContact c : sorted) {
+            int color;
+            String label;
+            if (toDeleteIds.contains(c.rawContactId)) {
+                color = 0xFFEF4444; label = "🔴 HAPUS"; counts[0]++;
+            } else if (keptDupIds.contains(c.rawContactId)) {
+                color = 0xFFF97316; label = "🟠 DUPLIKAT"; counts[1]++;
+            } else {
+                color = 0xFF34D399; label = "🟢 UNIK"; counts[2]++;
+            }
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setBackgroundColor(0xFF1E293B);
+            int rowPad = (int)(10 * getResources().getDisplayMetrics().density);
+            int rowMargin = (int)(6 * getResources().getDisplayMetrics().density);
+            row.setPadding(rowPad, rowPad, rowPad, rowPad);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, 0, 0, rowMargin);
+            row.setLayoutParams(lp);
+
+            // Color bar on left via left border workaround: wrap in horizontal layout
+            LinearLayout rowOuter = new LinearLayout(this);
+            rowOuter.setOrientation(LinearLayout.HORIZONTAL);
+            rowOuter.setLayoutParams(lp);
+
+            android.view.View colorBar = new android.view.View(this);
+            LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(
+                (int)(4 * getResources().getDisplayMetrics().density),
+                LinearLayout.LayoutParams.MATCH_PARENT);
+            colorBar.setLayoutParams(barLp);
+            colorBar.setBackgroundColor(color);
+            rowOuter.addView(colorBar);
+
+            row.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            rowOuter.addView(row);
+
+            // Name
+            TextView tvName = new TextView(this);
+            tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+            tvName.setTextColor(0xFFE2E8F0);
+            tvName.setTextSize(14);
+            tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+            row.addView(tvName);
+
+            // Phone
+            TextView tvPhone = new TextView(this);
+            tvPhone.setText("📞 " + (c.phone != null ? c.phone : "-"));
+            tvPhone.setTextColor(0xFF94A3B8);
+            tvPhone.setTextSize(12);
+            row.addView(tvPhone);
+
+            // Source + Google account name
+            String src = resolveSource(c.accountType);
+            String srcDisplay = src;
+            if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty()) {
+                srcDisplay = src + " (" + c.accountName + ")";
+            }
+            TextView tvSrc = new TextView(this);
+            tvSrc.setText("📂 " + srcDisplay + "   " + label);
+            tvSrc.setTextColor(color);
+            tvSrc.setTextSize(11);
+            row.addView(tvSrc);
+
+            container.addView(rowOuter);
+        }
+
+        String title = "📋 Daftar Kontak  🔴" + counts[0] + " 🟠" + counts[1] + " 🟢" + counts[2];
+        new AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(sv)
+            .setPositiveButton("Tutup", null)
+            .show();
+    }
+
+    private void addLegendItem(LinearLayout parent, String text, int color) {
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextColor(color);
+        tv.setTextSize(10);
+        parent.addView(tv);
     }
 
     private void confirmDeleteDuplicates() {
@@ -700,13 +859,15 @@ public class MainActivity extends AppCompatActivity {
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
                 ContactsContract.CommonDataKinds.Phone.NUMBER,
                 ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID,
-                ContactsContract.RawContacts.ACCOUNT_TYPE
+                ContactsContract.RawContacts.ACCOUNT_TYPE,
+                ContactsContract.RawContacts.ACCOUNT_NAME
             }, null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
         if (c != null) {
             while (c.moveToNext()) {
                 PhoneContact p = new PhoneContact();
                 p.name = c.getString(0); p.phone = c.getString(1);
                 p.rawContactId = c.getLong(2); p.accountType = c.getString(3);
+                p.accountName = c.getString(4);
                 list.add(p);
             }
             c.close();
@@ -798,7 +959,7 @@ public class MainActivity extends AppCompatActivity {
     // ─── MODELS ──────────────────────────────────────────────────────────────────
 
     static class ContactEntry { String name = ""; List<String> phones = new ArrayList<>(); }
-    static class PhoneContact { String name, phone, accountType; long rawContactId; }
+    static class PhoneContact { String name, phone, accountType, accountName; long rawContactId; }
     static class DuplicateGroup {
         String normalizedPhone; List<PhoneContact> contacts;
         DuplicateGroup(String p, List<PhoneContact> c) { normalizedPhone = p; contacts = c; }
