@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F172A"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📱 Contact Saver"
+            android:textSize="28sp"
+            android:textColor="#38BDF8"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Import kontak massal tanpa duplikat"
+            android:textSize="13sp"
+            android:textColor="#94A3B8"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- Step 1: Pick File -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LANGKAH 1 — PILIH FILE KONTAK"
+            android:textSize="11sp"
+            android:textColor="#38BDF8"
+            android:letterSpacing="0.1"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnPickFile"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="📂  Pilih File VCF atau CSV"
+            android:textSize="15sp"
+            android:textColor="#0F172A"
+            android:backgroundTint="#38BDF8"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:id="@+id/tvFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Belum ada file dipilih"
+            android:textColor="#64748B"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_marginBottom="28dp"/>
+
+        <!-- Step 2: Process -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LANGKAH 2 — PROSES &amp; SIMPAN"
+            android:textSize="11sp"
+            android:textColor="#38BDF8"
+            android:letterSpacing="0.1"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnProcess"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="⚡  Proses Kontak"
+            android:textSize="15sp"
+            android:textColor="#0F172A"
+            android:backgroundTint="#34D399"
+            android:enabled="false"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pilih file untuk memulai"
+            android:textColor="#94A3B8"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp"/>
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminateTint="#38BDF8"
+            android:visibility="gone"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Result Card -->
+        <LinearLayout
+            android:id="@+id/layoutResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1E293B"
+            android:padding="20dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#E2E8F0"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:lineSpacingMultiplier="1.6"/>
+        </LinearLayout>
+
+        <!-- Info Box -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1E293B"
+            android:padding="16dp"
+            android:layout_marginTop="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ℹ️  Format File yang Didukung"
+                android:textColor="#38BDF8"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="• VCF (.vcf) — Export dari HP lain atau Google Contacts\n• CSV (.csv) — Kolom: Nama, Nomor HP\n\nApp akan cek otomatis nomor yang sudah ada di HP dan hanya menyimpan yang belum ada."
+                android:textColor="#94A3B8"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.5"/>
+        </LinearLayout>
+
+        <View android:layout_height="40dp" android:layout_width="match_parent"/>
+
+    </LinearLayout>
+</ScrollView>
