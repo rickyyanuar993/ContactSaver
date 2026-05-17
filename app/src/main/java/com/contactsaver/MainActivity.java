@@ -814,13 +814,14 @@ public class MainActivity extends AppCompatActivity {
     private void deleteDuplicates() {
         btnDeleteDuplicates.setEnabled(false);
         progressStats.setVisibility(View.VISIBLE);
-        tvStatsStatus.setText("⏳ Menghapus duplikat berdasarkan prioritas...");
+        tvStatsStatus.setText("⏳ Menyiapkan daftar hapus...");
 
         executor.execute(() -> {
             int deleted = 0;
             try {
+                // Kumpulkan semua ID yang akan dihapus dulu
+                List<Long> toDeleteIds = new ArrayList<>();
                 for (DuplicateGroup g : duplicateGroups) {
-                    // Sort contacts by priority: index 0 = highest priority = keep
                     List<PhoneContact> sorted = new ArrayList<>(g.contacts);
                     sorted.sort((a, b) -> {
                         int ia = priorityOrder.indexOf(resolveSource(a.accountType));
@@ -829,16 +830,46 @@ public class MainActivity extends AppCompatActivity {
                         if (ib < 0) ib = priorityOrder.size();
                         return Integer.compare(ia, ib);
                     });
-                    // Keep index 0, delete the rest
-                    for (int i = 1; i < sorted.size(); i++) {
-                        Uri uri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
-                            .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
-                        int rows = getContentResolver().delete(uri,
-                            ContactsContract.RawContacts._ID + "=?",
-                            new String[]{String.valueOf(sorted.get(i).rawContactId)});
-                        if (rows > 0) deleted++;
-                    }
+                    // index 0 = dipertahankan, sisanya dihapus
+                    for (int i = 1; i < sorted.size(); i++)
+                        toDeleteIds.add(sorted.get(i).rawContactId);
                 }
+
+                final int total = toDeleteIds.size();
+                final Uri deleteUri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+                    .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
+
+                // Batch per 500 — aman dari TransactionTooLargeException
+                final int CHUNK = 500;
+                int processed = 0;
+                while (processed < toDeleteIds.size()) {
+                    int end = Math.min(processed + CHUNK, toDeleteIds.size());
+                    List<Long> chunk = toDeleteIds.subList(processed, end);
+
+                    ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+                    for (Long id : chunk) {
+                        ops.add(ContentProviderOperation.newDelete(deleteUri)
+                            .withSelection(ContactsContract.RawContacts._ID + "=?",
+                                new String[]{String.valueOf(id)})
+                            .build());
+                    }
+
+                    try {
+                        android.content.ContentProviderResult[] results =
+                            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+                        for (android.content.ContentProviderResult r : results)
+                            if (r.count != null && r.count > 0) deleted++;
+                    } catch (Exception chunkEx) {
+                        // Kalau satu chunk gagal, lanjut chunk berikutnya
+                    }
+
+                    processed = end;
+                    final int prog = processed, tot = total, del = deleted;
+                    mainHandler.post(() ->
+                        tvStatsStatus.setText("⏳ Menghapus... " + prog + "/" + tot + " (" + del + " berhasil)")
+                    );
+                }
+
                 final int fd = deleted;
                 mainHandler.post(() -> {
                     progressStats.setVisibility(View.GONE);
