@@ -5,301 +5,430 @@
     android:background="#0F172A">
 
     <!-- ═══ HALAMAN UTAMA ═══ -->
-    <ScrollView
+    <LinearLayout
         android:id="@+id/layoutMain"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="20dp">
+        android:orientation="vertical">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center_horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📱 Contact Saver"
-                android:textSize="28sp"
-                android:textColor="#38BDF8"
-                android:textStyle="bold"
-                android:layout_marginTop="20dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Import kontak massal tanpa duplikat"
-                android:textSize="13sp"
-                android:textColor="#94A3B8"
-                android:layout_marginBottom="24dp"/>
-
-            <!-- Button Statistik -->
-            <Button
-                android:id="@+id/btnGoStats"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="📊  Lihat Statistik Kontak"
-                android:textSize="14sp"
-                android:textColor="#0F172A"
-                android:backgroundTint="#818CF8"
-                android:layout_marginBottom="28dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LANGKAH 1 — PILIH FILE KONTAK"
-                android:textSize="11sp"
-                android:textColor="#38BDF8"
-                android:letterSpacing="0.1"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnPickFile"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="📂  Pilih File VCF atau CSV"
-                android:textSize="15sp"
-                android:textColor="#0F172A"
-                android:backgroundTint="#38BDF8"
-                android:layout_marginBottom="10dp"/>
-
-            <TextView
-                android:id="@+id/tvFileName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Belum ada file dipilih"
-                android:textColor="#64748B"
-                android:textSize="13sp"
-                android:gravity="center"
-                android:layout_marginBottom="28dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LANGKAH 2 — PROSES &amp; SIMPAN"
-                android:textSize="11sp"
-                android:textColor="#38BDF8"
-                android:letterSpacing="0.1"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnProcess"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="⚡  Proses Kontak"
-                android:textSize="15sp"
-                android:textColor="#0F172A"
-                android:backgroundTint="#34D399"
-                android:enabled="false"
-                android:layout_marginBottom="20dp"/>
-
-            <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Pilih file untuk memulai"
-                android:textColor="#94A3B8"
-                android:textSize="14sp"
-                android:gravity="center"
-                android:layout_marginBottom="12dp"/>
-
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:indeterminateTint="#38BDF8"
-                android:visibility="gone"
-                android:layout_marginBottom="20dp"/>
-
-            <LinearLayout
-                android:id="@+id/layoutResult"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#1E293B"
-                android:padding="20dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/tvResult"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="#E2E8F0"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:lineSpacingMultiplier="1.6"/>
-            </LinearLayout>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#1E293B"
-                android:padding="16dp"
-                android:layout_marginTop="24dp">
+                android:gravity="center_horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ℹ️  Format File yang Didukung"
+                    android:text="📱 Contact Saver"
+                    android:textSize="28sp"
                     android:textColor="#38BDF8"
+                    android:textStyle="bold"
+                    android:layout_marginTop="20dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Import kontak massal tanpa duplikat"
                     android:textSize="13sp"
+                    android:textColor="#94A3B8"
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- Nav Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="28dp">
+
+                    <Button
+                        android:id="@+id/btnGoStats"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="📊 Statistik"
+                        android:textSize="13sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#818CF8"
+                        android:layout_marginEnd="8dp"/>
+
+                    <Button
+                        android:id="@+id/btnGoBackup"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="💾 Backup"
+                        android:textSize="13sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#F59E0B"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 1 — PILIH FILE KONTAK"
+                    android:textSize="11sp"
+                    android:textColor="#38BDF8"
+                    android:letterSpacing="0.1"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"/>
 
+                <Button
+                    android:id="@+id/btnPickFile"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="📂  Pilih File VCF atau CSV"
+                    android:textSize="15sp"
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#38BDF8"
+                    android:layout_marginBottom="10dp"/>
+
                 <TextView
+                    android:id="@+id/tvFileName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Belum ada file dipilih"
+                    android:textColor="#64748B"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="28dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 2 — PROSES &amp; SIMPAN"
+                    android:textSize="11sp"
+                    android:textColor="#38BDF8"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnProcess"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="⚡  Proses Kontak"
+                    android:textSize="15sp"
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#34D399"
+                    android:enabled="false"
+                    android:layout_marginBottom="20dp"/>
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Pilih file untuk memulai"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="12dp"/>
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• VCF (.vcf) — Export dari HP lain atau Google Contacts\n• CSV (.csv) — Kolom: Nama, Nomor HP\n\nApp akan cek otomatis nomor yang sudah ada di HP dan hanya menyimpan yang belum ada."
-                    android:textColor="#94A3B8"
-                    android:textSize="12sp"
-                    android:lineSpacingMultiplier="1.5"/>
-            </LinearLayout>
+                    android:indeterminateTint="#38BDF8"
+                    android:visibility="gone"
+                    android:layout_marginBottom="20dp"/>
 
-            <View android:layout_height="40dp" android:layout_width="match_parent"/>
-        </LinearLayout>
-    </ScrollView>
+                <LinearLayout
+                    android:id="@+id/layoutResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tvResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#E2E8F0"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
+
+                <View android:layout_height="40dp" android:layout_width="match_parent"/>
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
 
     <!-- ═══ HALAMAN STATISTIK ═══ -->
-    <ScrollView
+    <LinearLayout
         android:id="@+id/layoutStats"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="20dp"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="20dp">
 
-            <!-- Header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp">
+                android:orientation="vertical">
 
-                <Button
-                    android:id="@+id/btnBackMain"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="← Kembali"
-                    android:textSize="12sp"
-                    android:textColor="#0F172A"
-                    android:backgroundTint="#64748B"
-                    android:layout_marginEnd="12dp"/>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="📊 Statistik Kontak"
-                    android:textSize="22sp"
-                    android:textColor="#38BDF8"
-                    android:textStyle="bold"/>
-            </LinearLayout>
-
-            <ProgressBar
-                android:id="@+id/progressStats"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:indeterminateTint="#38BDF8"
-                android:visibility="gone"
-                android:layout_gravity="center"
-                android:layout_marginBottom="16dp"/>
-
-            <!-- Stat Cards -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#1E293B"
-                android:padding="20dp"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:id="@+id/tvStatsTotal"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="⏳ Menghitung..."
-                    android:textColor="#E2E8F0"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="20dp">
+                    <Button
+                        android:id="@+id/btnBackFromStats"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="← Kembali"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#64748B"
+                        android:layout_marginEnd="12dp"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📊 Statistik Kontak"
+                        android:textSize="22sp"
+                        android:textColor="#38BDF8"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/progressStats"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminateTint="#38BDF8"
+                    android:visibility="gone"
+                    android:layout_gravity="center"
+                    android:layout_marginBottom="16dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:layout_marginBottom="12dp">
+                    <TextView
+                        android:id="@+id/tvStatsTotal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#E2E8F0"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+                    <TextView
+                        android:id="@+id/tvStatsUnique"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#34D399"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:id="@+id/tvStatsDuplicate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#FB923C"
+                        android:textSize="16sp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:layout_marginBottom="20dp">
+                    <TextView
+                        android:id="@+id/tvStatsSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#94A3B8"
+                        android:textSize="14sp"
+                        android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
 
                 <TextView
-                    android:id="@+id/tvStatsUnique"
+                    android:id="@+id/tvStatsStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="#34D399"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="12dp"/>
+
+                <Button
+                    android:id="@+id/btnDeleteDuplicates"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="🗑️  Hapus Semua Duplikat"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#EF4444"
+                    android:enabled="false"
                     android:layout_marginBottom="8dp"/>
 
                 <TextView
-                    android:id="@+id/tvStatsDuplicate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FB923C"
-                    android:textSize="16sp"/>
+                    android:text="⚠️ Hapus duplikat dari Google Account akan otomatis sync dan hilang dari server Google."
+                    android:textColor="#64748B"
+                    android:textSize="11sp"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.4"
+                    android:layout_marginBottom="40dp"/>
             </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
 
-            <!-- Source Info -->
+    <!-- ═══ HALAMAN BACKUP ═══ -->
+    <LinearLayout
+        android:id="@+id/layoutBackup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="20dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#1E293B"
-                android:padding="20dp"
-                android:layout_marginBottom="20dp">
+                android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvStatsSource"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#94A3B8"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="20dp">
+                    <Button
+                        android:id="@+id/btnBackFromBackup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="← Kembali"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#64748B"
+                        android:layout_marginEnd="12dp"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="💾 Backup Kontak"
+                        android:textSize="22sp"
+                        android:textColor="#F59E0B"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/progressBackup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminateTint="#F59E0B"
+                    android:visibility="gone"
+                    android:layout_gravity="center"
+                    android:layout_marginBottom="16dp"/>
+
+                <!-- Info Card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:layout_marginBottom="20dp">
+                    <TextView
+                        android:id="@+id/tvBackupInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#E2E8F0"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
+
+                <!-- Backup Buttons -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="PILIH JENIS BACKUP"
+                    android:textSize="11sp"
+                    android:textColor="#F59E0B"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp"/>
+
+                <Button
+                    android:id="@+id/btnBackupAll"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:text="📦  Backup Semua Kontak\n(termasuk duplikat)"
                     android:textSize="14sp"
-                    android:lineSpacingMultiplier="1.6"/>
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#38BDF8"
+                    android:enabled="false"
+                    android:layout_marginBottom="12dp"/>
+
+                <Button
+                    android:id="@+id/btnBackupUnique"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:text="✨  Backup Kontak Unik Saja\n(tanpa duplikat)"
+                    android:textSize="14sp"
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#34D399"
+                    android:enabled="false"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ℹ️ Hasil backup berupa 2 file: .CSV dan .VCF\nTersimpan di: Downloads/ContactSaver/"
+                    android:textColor="#64748B"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.4"
+                    android:layout_marginBottom="20dp"/>
+
+                <!-- Status Result -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="20dp"
+                    android:layout_marginBottom="40dp">
+                    <TextView
+                        android:id="@+id/tvBackupStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#34D399"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingMultiplier="1.6"/>
+                </LinearLayout>
+
             </LinearLayout>
-
-            <!-- Status -->
-            <TextView
-                android:id="@+id/tvStatsStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="#34D399"
-                android:textSize="14sp"
-                android:gravity="center"
-                android:layout_marginBottom="12dp"/>
-
-            <!-- Delete Button -->
-            <Button
-                android:id="@+id/btnDeleteDuplicates"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="🗑️  Hapus Semua Duplikat"
-                android:textSize="15sp"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#EF4444"
-                android:enabled="false"
-                android:layout_marginBottom="8dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚠️ Hapus duplikat dari Google Account akan otomatis sync dan hilang dari server Google."
-                android:textColor="#64748B"
-                android:textSize="11sp"
-                android:gravity="center"
-                android:lineSpacingMultiplier="1.4"
-                android:layout_marginBottom="40dp"/>
-
-        </LinearLayout>
-    </ScrollView>
+        </ScrollView>
+    </LinearLayout>
 
 </FrameLayout>
