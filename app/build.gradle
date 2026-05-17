@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+    namespace 'com.contactsaver'
     compileSdk 34
 
     defaultConfig {
