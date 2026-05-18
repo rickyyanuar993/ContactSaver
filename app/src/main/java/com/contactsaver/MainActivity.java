@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
-    private Button btnDeleteDuplicates, btnBackFromStats, btnApplyFilter, btnViewContacts;
+    private Button btnDeleteDuplicates, btnDeleteAll, btnBackFromStats, btnApplyFilter, btnViewContacts;
     private ProgressBar progressStats;
     private CheckBox chkGoogle, chkPhone, chkSim, chkWa, chkWaBusiness, chkOther;
 
@@ -136,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
         tvStatsUnique        = findViewById(R.id.tvStatsUnique);
         tvStatsSource        = findViewById(R.id.tvStatsSource);
         btnDeleteDuplicates  = findViewById(R.id.btnDeleteDuplicates);
+        btnDeleteAll         = findViewById(R.id.btnDeleteAll);
         btnBackFromStats     = findViewById(R.id.btnBackFromStats);
         progressStats        = findViewById(R.id.progressStats);
         tvStatsStatus        = findViewById(R.id.tvStatsStatus);
@@ -190,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
         // Listeners Stats
         btnBackFromStats.setOnClickListener(v -> showPage(layoutMain));
         btnDeleteDuplicates.setOnClickListener(v -> confirmDeleteDuplicates());
+        btnDeleteAll.setOnClickListener(v -> confirmDeleteAll());
         btnApplyFilter.setOnClickListener(v -> openStatsPage());
         btnViewContacts.setOnClickListener(v -> showContactListDialog());
 
@@ -485,7 +487,7 @@ public class MainActivity extends AppCompatActivity {
         final List<ContactEntry> toSave = new ArrayList<>(analyzedToSave);
         executor.execute(() -> {
             try {
-                int saved = saveContacts(toSave, accountType, accountName);
+                int saved = saveContactsBatch(toSave, accountType, accountName);
                 mainHandler.post(() -> {
                     progressBar.setVisibility(View.GONE);
                     btnProcess.setEnabled(false);
@@ -522,6 +524,7 @@ public class MainActivity extends AppCompatActivity {
         tvStatsSource.setText("⏳ Memuat sumber...");
         tvStatsStatus.setText("");
         btnDeleteDuplicates.setEnabled(false);
+        btnDeleteAll.setEnabled(false);
         btnViewContacts.setEnabled(false);
         progressStats.setVisibility(View.VISIBLE);
 
@@ -602,6 +605,7 @@ public class MainActivity extends AppCompatActivity {
                     tvStatsDuplicate.setText("🔁 Duplikat: " + fDup + " kontak");
                     tvStatsSource.setText("📂 Sumber Kontak:\n" + fSrc);
                     btnDeleteDuplicates.setEnabled(fDup > 0);
+                    btnDeleteAll.setEnabled(fTotal > 0);
                     btnViewContacts.setEnabled(fTotal > 0);
                     if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat!");
                 });
@@ -1005,6 +1009,95 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // ─── HAPUS SEMUA ─────────────────────────────────────────────────────────────
+
+    private void confirmDeleteAll() {
+        int count = lastFilteredContacts.size();
+        if (count == 0) {
+            Toast.makeText(this, "Tidak ada kontak yang dipilih filter.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Build sumber yang aktif
+        List<String> activeFilters = new ArrayList<>();
+        if (chkGoogle.isChecked())      activeFilters.add("Google Account");
+        if (chkPhone.isChecked())       activeFilters.add("Memori HP");
+        if (chkSim.isChecked())         activeFilters.add("SIM Card");
+        if (chkWa.isChecked())          activeFilters.add("WhatsApp");
+        if (chkWaBusiness.isChecked())  activeFilters.add("WA Bisnis");
+        if (chkOther.isChecked())       activeFilters.add("Sumber Lain");
+
+        String srcLabel = activeFilters.isEmpty() ? "semua sumber" : String.join(", ", activeFilters);
+
+        new AlertDialog.Builder(this)
+            .setTitle("🚨 HAPUS SEMUA Kontak")
+            .setMessage("Akan menghapus SEMUA " + count + " kontak dari:\n" + srcLabel +
+                "\n\n⚠️ Kontak dari Google Account akan ikut terhapus di server Google." +
+                "\n\n❗ Aksi ini TIDAK BISA dibatalkan!\n\nLanjutkan?")
+            .setPositiveButton("Ya, Hapus Semua", (d, w) -> deleteAllFiltered())
+            .setNegativeButton("Batal", null)
+            .show();
+    }
+
+    private void deleteAllFiltered() {
+        if (lastFilteredContacts.isEmpty()) return;
+
+        btnDeleteAll.setEnabled(false);
+        btnDeleteDuplicates.setEnabled(false);
+        progressStats.setVisibility(View.VISIBLE);
+        tvStatsStatus.setText("⏳ Menyiapkan daftar hapus...");
+
+        final List<Long> toDeleteIds = new ArrayList<>();
+        for (PhoneContact c : lastFilteredContacts) toDeleteIds.add(c.rawContactId);
+
+        executor.execute(() -> {
+            int deleted = 0;
+            final int total = toDeleteIds.size();
+            final Uri deleteUri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+                .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
+
+            // Batch 500 per chunk — optimal balance antara speed & TransactionTooLarge
+            final int CHUNK = 500;
+            int processed = 0;
+
+            while (processed < toDeleteIds.size()) {
+                int end = Math.min(processed + CHUNK, toDeleteIds.size());
+                List<Long> chunk = toDeleteIds.subList(processed, end);
+
+                ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+                for (Long id : chunk) {
+                    ops.add(ContentProviderOperation.newDelete(deleteUri)
+                        .withSelection(ContactsContract.RawContacts._ID + "=?",
+                            new String[]{String.valueOf(id)})
+                        .build());
+                }
+                try {
+                    android.content.ContentProviderResult[] results =
+                        getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+                    for (android.content.ContentProviderResult r : results)
+                        if (r.count != null && r.count > 0) deleted++;
+                } catch (Exception chunkEx) {
+                    // Lanjut chunk berikutnya jika ada error
+                }
+
+                processed = end;
+                final int prog = processed, del = deleted;
+                mainHandler.post(() ->
+                    tvStatsStatus.setText("⏳ Menghapus semua... " + prog + "/" + total + " (" + del + " berhasil)")
+                );
+            }
+
+            final int fd = deleted;
+            mainHandler.post(() -> {
+                progressStats.setVisibility(View.GONE);
+                tvStatsStatus.setText("✅ Berhasil hapus " + fd + " kontak!");
+                lastFilteredContacts.clear();
+                duplicateGroups.clear();
+                openStatsPage(); // refresh stats
+            });
+        });
+    }
+
     // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
     /** Resolve accountType string → friendly source name */
@@ -1109,30 +1202,90 @@ public class MainActivity extends AppCompatActivity {
         r.close(); return list;
     }
 
-    private int saveContacts(List<ContactEntry> contacts, String accountType, String accountName) {
+    private int saveContactsBatch(List<ContactEntry> contacts, String accountType, String accountName) {
+        // Build one giant ops list with chunks of 200 contacts per applyBatch call
+        // Each contact = 1 RawContact insert + 1 StructuredName + N phone inserts
+        // Using backReferences within each chunk — fastest method for bulk inserts
         int saved = 0;
-        for (ContactEntry c : contacts) {
-            try {
-                ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+        final int CHUNK = 200;
+        int total = contacts.size();
+        int processed = 0;
+
+        while (processed < total) {
+            int end = Math.min(processed + CHUNK, total);
+            List<ContactEntry> chunk = contacts.subList(processed, end);
+
+            ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+            int opIndex = 0;
+
+            for (ContactEntry c : chunk) {
+                int rawContactOpIndex = opIndex;
                 ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
                     .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
                     .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName).build());
+                opIndex++;
+
                 ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactOpIndex)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                        ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
                     .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, c.name).build());
+                opIndex++;
+
                 for (String phone : c.phones) {
                     ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                        .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactOpIndex)
+                        .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
                         .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
-                        .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE).build());
+                        .withValue(ContactsContract.CommonDataKinds.Phone.TYPE,
+                            ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE).build());
+                    opIndex++;
                 }
+            }
+
+            try {
                 getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
-                saved++;
-            } catch (Exception ignored) {}
+                saved += chunk.size();
+            } catch (Exception e) {
+                // Fallback: simpan satu per satu jika batch gagal
+                for (ContactEntry c : chunk) {
+                    try {
+                        ArrayList<ContentProviderOperation> single = new ArrayList<>();
+                        single.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                            .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
+                            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName).build());
+                        single.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                            .withValue(ContactsContract.Data.MIMETYPE,
+                                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, c.name).build());
+                        for (String phone : c.phones) {
+                            single.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                                .withValue(ContactsContract.Data.MIMETYPE,
+                                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
+                                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE,
+                                    ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE).build());
+                        }
+                        getContentResolver().applyBatch(ContactsContract.AUTHORITY, single);
+                        saved++;
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            processed = end;
+            final int prog = processed, tot = total, sv = saved;
+            mainHandler.post(() ->
+                tvStatus.setText("⏳ Menyimpan kontak... " + prog + "/" + tot + " (" + sv + " berhasil)")
+            );
         }
         return saved;
+    }
+
+    private int saveContacts(List<ContactEntry> contacts, String accountType, String accountName) {
+        return saveContactsBatch(contacts, accountType, accountName);
     }
 
     private String safe(String s) { return s == null ? "" : s.replace("\"", "'"); }
