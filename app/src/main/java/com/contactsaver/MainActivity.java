@@ -651,9 +651,12 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 1; i < sorted.size(); i++) toDeleteIds.add(sorted.get(i).rawContactId);
         }
 
-        // Sort contacts by name
+        // Sort: merah (hapus) dulu → orange (dup dipertahankan) → hijau (unik), lalu nama
         List<PhoneContact> sorted = new ArrayList<>(lastFilteredContacts);
         sorted.sort((a, b) -> {
+            int ra = toDeleteIds.contains(a.rawContactId) ? 0 : keptDupIds.contains(a.rawContactId) ? 1 : 2;
+            int rb = toDeleteIds.contains(b.rawContactId) ? 0 : keptDupIds.contains(b.rawContactId) ? 1 : 2;
+            if (ra != rb) return Integer.compare(ra, rb);
             String na = a.name == null ? "" : a.name;
             String nb = b.name == null ? "" : b.name;
             return na.compareToIgnoreCase(nb);
