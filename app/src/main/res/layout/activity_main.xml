@@ -565,10 +565,10 @@
                     android:id="@+id/btnDeleteAll"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:text="🚨  HAPUS SEMUA (Filter Aktif)"
+                    android:text="🗑️  Hapus Semua (Filter Aktif)"
                     android:textSize="15sp"
                     android:textColor="#FFFFFF"
-                    android:backgroundTint="#7C1D1D"
+                    android:backgroundTint="#EF4444"
                     android:enabled="false"
                     android:layout_marginBottom="8dp"/>
 
@@ -580,7 +580,47 @@
                     android:textSize="11sp"
                     android:gravity="center"
                     android:lineSpacingMultiplier="1.4"
-                    android:layout_marginBottom="40dp"/>
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="💾 BACKUP KONTAK (FILTER AKTIF)"
+                    android:textSize="11sp"
+                    android:textColor="#F59E0B"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="40dp">
+
+                    <Button
+                        android:id="@+id/btnBackupFilterAll"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:text="📦 Backup All\n(Filter Aktif)"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#38BDF8"
+                        android:enabled="false"
+                        android:layout_marginEnd="6dp"/>
+
+                    <Button
+                        android:id="@+id/btnBackupFilterUnique"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:text="✨ Backup Unik\n(Filter Aktif)"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#34D399"
+                        android:enabled="false"/>
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
     </LinearLayout>

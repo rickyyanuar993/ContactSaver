@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
-    private Button btnDeleteDuplicates, btnDeleteAll, btnBackFromStats, btnApplyFilter, btnViewContacts;
+    private Button btnDeleteDuplicates, btnDeleteAll, btnBackupFilterAll, btnBackupFilterUnique, btnBackFromStats, btnApplyFilter, btnViewContacts;
     private ProgressBar progressStats;
     private CheckBox chkGoogle, chkPhone, chkSim, chkWa, chkWaBusiness, chkOther;
 
@@ -137,6 +137,8 @@ public class MainActivity extends AppCompatActivity {
         tvStatsSource        = findViewById(R.id.tvStatsSource);
         btnDeleteDuplicates  = findViewById(R.id.btnDeleteDuplicates);
         btnDeleteAll         = findViewById(R.id.btnDeleteAll);
+        btnBackupFilterAll   = findViewById(R.id.btnBackupFilterAll);
+        btnBackupFilterUnique= findViewById(R.id.btnBackupFilterUnique);
         btnBackFromStats     = findViewById(R.id.btnBackFromStats);
         progressStats        = findViewById(R.id.progressStats);
         tvStatsStatus        = findViewById(R.id.tvStatsStatus);
@@ -192,6 +194,8 @@ public class MainActivity extends AppCompatActivity {
         btnBackFromStats.setOnClickListener(v -> showPage(layoutMain));
         btnDeleteDuplicates.setOnClickListener(v -> confirmDeleteDuplicates());
         btnDeleteAll.setOnClickListener(v -> confirmDeleteAll());
+        btnBackupFilterAll.setOnClickListener(v -> startBackupFiltered(false));
+        btnBackupFilterUnique.setOnClickListener(v -> startBackupFiltered(true));
         btnApplyFilter.setOnClickListener(v -> openStatsPage());
         btnViewContacts.setOnClickListener(v -> showContactListDialog());
 
@@ -525,6 +529,8 @@ public class MainActivity extends AppCompatActivity {
         tvStatsStatus.setText("");
         btnDeleteDuplicates.setEnabled(false);
         btnDeleteAll.setEnabled(false);
+        btnBackupFilterAll.setEnabled(false);
+        btnBackupFilterUnique.setEnabled(false);
         btnViewContacts.setEnabled(false);
         progressStats.setVisibility(View.VISIBLE);
 
@@ -606,6 +612,8 @@ public class MainActivity extends AppCompatActivity {
                     tvStatsSource.setText("📂 Sumber Kontak:\n" + fSrc);
                     btnDeleteDuplicates.setEnabled(fDup > 0);
                     btnDeleteAll.setEnabled(fTotal > 0);
+                    btnBackupFilterAll.setEnabled(fTotal > 0);
+                    btnBackupFilterUnique.setEnabled(fTotal > 0);
                     btnViewContacts.setEnabled(fTotal > 0);
                     if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat!");
                 });
@@ -1095,6 +1103,107 @@ public class MainActivity extends AppCompatActivity {
                 duplicateGroups.clear();
                 openStatsPage(); // refresh stats
             });
+        });
+    }
+
+    // ─── BACKUP FILTER AKTIF ─────────────────────────────────────────────────────
+
+    private void startBackupFiltered(boolean uniqueOnly) {
+        if (lastFilteredContacts.isEmpty()) {
+            Toast.makeText(this, "Tidak ada kontak. Terapkan filter dulu.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnBackupFilterAll.setEnabled(false);
+        btnBackupFilterUnique.setEnabled(false);
+        progressStats.setVisibility(View.VISIBLE);
+        tvStatsStatus.setText("⏳ Menyiapkan backup...");
+
+        executor.execute(() -> {
+            try {
+                List<PhoneContact> toBackup;
+                if (uniqueOnly) {
+                    // Ambil hanya yang nomor unik (pertama muncul)
+                    Map<String, Boolean> seen = new LinkedHashMap<>();
+                    toBackup = new ArrayList<>();
+                    for (PhoneContact c : lastFilteredContacts) {
+                        String norm = normalizePhone(c.phone);
+                        if (!seen.containsKey(norm)) {
+                            seen.put(norm, true);
+                            toBackup.add(c);
+                        }
+                    }
+                } else {
+                    toBackup = new ArrayList<>(lastFilteredContacts);
+                }
+
+                String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                String label = uniqueOnly ? "filter_unik" : "filter_all";
+
+                File dir = new File(Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS), "ContactSaver");
+                if (!dir.exists()) dir.mkdirs();
+
+                File csvFile = new File(dir, "backup_" + label + "_" + timestamp + ".csv");
+                File vcfFile = new File(dir, "backup_" + label + "_" + timestamp + ".vcf");
+
+                final int total = toBackup.size();
+                mainHandler.post(() -> tvStatsStatus.setText("⏳ Menulis CSV... (0/" + total + ")"));
+
+                BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFile));
+                csvWriter.write("nama,nomor,sumber\n");
+                int i = 0;
+                for (PhoneContact c : toBackup) {
+                    String src = resolveSource(c.accountType);
+                    csvWriter.write("\"" + safe(c.name) + "\",\"" + safe(c.phone) + "\",\"" + src + "\"\n");
+                    i++;
+                    if (i % 500 == 0) {
+                        final int prog = i;
+                        mainHandler.post(() -> tvStatsStatus.setText("⏳ Menulis CSV... (" + prog + "/" + total + ")"));
+                    }
+                }
+                csvWriter.close();
+
+                mainHandler.post(() -> tvStatsStatus.setText("⏳ Menulis VCF... (0/" + total + ")"));
+
+                BufferedWriter vcfWriter = new BufferedWriter(new FileWriter(vcfFile));
+                i = 0;
+                for (PhoneContact c : toBackup) {
+                    vcfWriter.write("BEGIN:VCARD\n");
+                    vcfWriter.write("VERSION:3.0\n");
+                    vcfWriter.write("FN:" + safe(c.name) + "\n");
+                    vcfWriter.write("TEL;TYPE=CELL:" + safe(c.phone) + "\n");
+                    vcfWriter.write("END:VCARD\n\n");
+                    i++;
+                    if (i % 500 == 0) {
+                        final int prog = i;
+                        mainHandler.post(() -> tvStatsStatus.setText("⏳ Menulis VCF... (" + prog + "/" + total + ")"));
+                    }
+                }
+                vcfWriter.close();
+
+                final String csvPath = csvFile.getAbsolutePath();
+                final String vcfPath = vcfFile.getAbsolutePath();
+                final int count = toBackup.size();
+
+                mainHandler.post(() -> {
+                    progressStats.setVisibility(View.GONE);
+                    btnBackupFilterAll.setEnabled(true);
+                    btnBackupFilterUnique.setEnabled(true);
+                    tvStatsStatus.setText(
+                        "✅ Backup selesai! " + count + " kontak\n" +
+                        "📄 CSV: " + csvPath + "\n" +
+                        "📋 VCF: " + vcfPath
+                    );
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    progressStats.setVisibility(View.GONE);
+                    btnBackupFilterAll.setEnabled(true);
+                    btnBackupFilterUnique.setEnabled(true);
+                    tvStatsStatus.setText("❌ Error: " + e.getMessage());
+                });
+            }
         });
     }
 
