@@ -226,7 +226,7 @@
                         android:id="@+id/btnPreviewImport"
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
-                        android:text="👁️ Lihat Preview (20 Sampel)"
+                        android:text="👁️ Lihat Preview Kontak"
                         android:textSize="13sp"
                         android:textColor="#0F172A"
                         android:backgroundTint="#F59E0B"

@@ -1664,8 +1664,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        int limit = Math.min(allParsedContacts.size(), 20);
-        List<ContactEntry> previewList = allParsedContacts.subList(0, limit);
+        List<ContactEntry> previewList = allParsedContacts;
 
         float dp = getResources().getDisplayMetrics().density;
         int pad = (int)(12 * dp);
@@ -1683,7 +1682,7 @@ public class MainActivity extends AppCompatActivity {
         header.addView(legendRow);
 
         TextView tvCount = new TextView(this);
-        tvCount.setText("Menampilkan " + limit + " dari " + allParsedContacts.size() + " kontak");
+        tvCount.setText("Menampilkan " + previewList.size() + " kontak");
         tvCount.setTextColor(0xFF64748B);
         tvCount.setTextSize(11);
         tvCount.setPadding(0, (int)(6*dp), 0, 0);
@@ -1778,7 +1777,7 @@ public class MainActivity extends AppCompatActivity {
         root.addView(listView);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("👁️ Preview Import (20 Sampel Pertama)")
+            .setTitle("👁️ Preview Import (" + previewList.size() + " Kontak)")
             .setView(root)
             .setPositiveButton("Tutup", null)
             .create();
