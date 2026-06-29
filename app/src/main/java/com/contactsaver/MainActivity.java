@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutMain, layoutStats, layoutBackup, layoutSettings;
 
     // Main page
-    private Button btnPickFile, btnAnalyze, btnProcess, btnGoStats, btnGoBackup, btnGoSettings;
+    private Button btnPickFile, btnAnalyze, btnProcess, btnGoStats, btnGoBackup, btnGoSettings, btnPreviewImport;
     private TextView tvFileName, tvStatus, tvResult, tvAnalyzeStatus, tvAnalyzeResult, tvSaveDestNote;
     private ProgressBar progressBar, progressAnalyze;
     private LinearLayout layoutResult, layoutAnalyzeResult, layoutGoogleAccountPicker;
@@ -77,6 +77,9 @@ public class MainActivity extends AppCompatActivity {
 
     private Uri selectedFileUri = null;
     private List<ContactEntry> analyzedToSave = null; // hasil analisis langkah 2
+    private List<ContactEntry> allParsedContacts = null;
+    private Set<String> existingPhonesForPreview = null;
+    private String detectedFormat = "";
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -106,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         btnPickFile          = findViewById(R.id.btnPickFile);
         btnAnalyze           = findViewById(R.id.btnAnalyze);
         btnProcess           = findViewById(R.id.btnProcess);
+        btnPreviewImport     = findViewById(R.id.btnPreviewImport);
         btnGoStats           = findViewById(R.id.btnGoStats);
         btnGoBackup          = findViewById(R.id.btnGoBackup);
         btnGoSettings        = findViewById(R.id.btnGoSettings);
@@ -186,6 +190,7 @@ public class MainActivity extends AppCompatActivity {
         btnPickFile.setOnClickListener(v -> pickFile());
         btnAnalyze.setOnClickListener(v -> startAnalyze());
         btnProcess.setOnClickListener(v -> startProcessing());
+        btnPreviewImport.setOnClickListener(v -> showImportPreviewDialog());
         btnGoStats.setOnClickListener(v -> openStatsPage());
         btnGoBackup.setOnClickListener(v -> openBackupPage());
         btnGoSettings.setOnClickListener(v -> openSettingsPage());
@@ -355,6 +360,9 @@ public class MainActivity extends AppCompatActivity {
             btnAnalyze.setEnabled(true);
             btnProcess.setEnabled(false);
             analyzedToSave = null;
+            allParsedContacts = null;
+            existingPhonesForPreview = null;
+            detectedFormat = "";
             layoutAnalyzeResult.setVisibility(View.GONE);
             layoutResult.setVisibility(View.GONE);
             tvAnalyzeStatus.setText("File dipilih. Tap 'Analisis File' untuk mengecek.");
@@ -410,7 +418,11 @@ public class MainActivity extends AppCompatActivity {
 
                 mainHandler.post(() -> tvAnalyzeStatus.setText("⏳ Membaca file..."));
                 String fn = getFileName(selectedFileUri).toLowerCase();
-                List<ContactEntry> fileContacts = fn.endsWith(".vcf") || fn.endsWith(".vcard")
+                boolean isVcf = fn.endsWith(".vcf") || fn.endsWith(".vcard");
+                if (isVcf) {
+                    detectedFormat = "VCF (vCard) File";
+                }
+                List<ContactEntry> fileContacts = isVcf
                     ? parseVcf(selectedFileUri) : parseCsv(selectedFileUri);
 
                 mainHandler.post(() -> tvAnalyzeStatus.setText("⏳ Menganalisis duplikat..."));
@@ -426,15 +438,20 @@ public class MainActivity extends AppCompatActivity {
                 final int dupCount = dupList.size();
                 final int uniqueCount = toSave.size();
                 analyzedToSave = toSave;
+                allParsedContacts = fileContacts;
+                existingPhonesForPreview = existing;
 
                 mainHandler.post(() -> {
                     progressAnalyze.setVisibility(View.GONE);
                     btnAnalyze.setEnabled(true);
                     btnProcess.setEnabled(uniqueCount > 0);
+                    btnPreviewImport.setEnabled(total > 0);
                     tvAnalyzeStatus.setText("✅ Analisis selesai!");
                     layoutAnalyzeResult.setVisibility(View.VISIBLE);
                     tvAnalyzeResult.setText(
                         "📊 HASIL ANALISIS FILE\n\n" +
+                        "📁 Nama File              : " + getFileName(selectedFileUri) + "\n" +
+                        "📝 Format Terdeteksi       : " + detectedFormat + "\n" +
                         "📁 Total kontak di file   : " + total + " kontak\n" +
                         "🔍 Dicek duplikat dari    : " + srcLabel + "\n" +
                         "🔁 Sudah ada (skip)       : " + dupCount + " kontak\n" +
@@ -1295,23 +1312,262 @@ public class MainActivity extends AppCompatActivity {
     private List<ContactEntry> parseCsv(Uri uri) throws Exception {
         List<ContactEntry> list = new ArrayList<>();
         BufferedReader r = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uri), "UTF-8"));
-        String header = r.readLine(); if (header == null) return list;
-        String[] headers = header.split(","); int ni = -1, pi = -1;
-        for (int i = 0; i < headers.length; i++) {
-            String h = headers[i].toLowerCase().replaceAll("[^a-z]", "");
-            if (h.contains("name") || h.contains("nama")) ni = i;
-            if (h.contains("phone") || h.contains("tel") || h.contains("hp") || h.contains("nomor")) pi = i;
-        }
-        if (pi == -1) pi = 1; if (ni == -1) ni = 0;
+        List<List<String>> allRows = new ArrayList<>();
         String line;
         while ((line = r.readLine()) != null) {
-            String[] cols = line.split(",", -1);
-            if (cols.length <= pi) continue;
-            String phone = cols[pi].replaceAll("\"", "").trim();
-            String name = ni < cols.length ? cols[ni].replaceAll("\"", "").trim() : phone;
-            if (!phone.isEmpty()) { ContactEntry e = new ContactEntry(); e.name = name; e.phones.add(phone); list.add(e); }
+            allRows.add(parseCsvLine(line));
         }
-        r.close(); return list;
+        r.close();
+
+        if (allRows.isEmpty()) {
+            detectedFormat = "File CSV Kosong";
+            return list;
+        }
+
+        List<String> firstRow = allRows.get(0);
+        int numCols = 0;
+        for (List<String> row : allRows) {
+            if (row.size() > numCols) numCols = row.size();
+        }
+
+        // 1. Check if first row is a header
+        int headerMatches = 0;
+        for (String col : firstRow) {
+            if (isPhoneHeader(col) || isNameHeader(col)) {
+                headerMatches++;
+            }
+        }
+        boolean hasHeader = headerMatches >= 1;
+
+        List<Integer> phoneIndices = new ArrayList<>();
+        List<Integer> nameIndices = new ArrayList<>();
+
+        if (hasHeader) {
+            for (int i = 0; i < firstRow.size(); i++) {
+                String col = firstRow.get(i);
+                if (isPhoneHeader(col)) {
+                    phoneIndices.add(i);
+                } else if (isNameHeader(col)) {
+                    nameIndices.add(i);
+                }
+            }
+        }
+
+        // If no headers found or missing one of them, fall back/verify with auto-detect
+        boolean fellBackToAutoDetect = false;
+        int autoPi = -1, autoNi = -1;
+        if (phoneIndices.isEmpty() || nameIndices.isEmpty()) {
+            int[] phoneScores = new int[numCols];
+            int[] nameScores = new int[numCols];
+            int scanLimit = Math.min(allRows.size(), 15);
+            for (int i = 0; i < scanLimit; i++) {
+                List<String> row = allRows.get(i);
+                for (int j = 0; j < row.size(); j++) {
+                    String val = row.get(j);
+                    if (isLikelyPhone(val)) {
+                        phoneScores[j]++;
+                    } else if (isLikelyName(val)) {
+                        nameScores[j]++;
+                    }
+                }
+            }
+
+            int bestPi = -1;
+            int maxPhoneScore = -1;
+            for (int j = 0; j < numCols; j++) {
+                if (phoneScores[j] > maxPhoneScore) {
+                    maxPhoneScore = phoneScores[j];
+                    bestPi = j;
+                }
+            }
+
+            int bestNi = -1;
+            int maxNameScore = -1;
+            for (int j = 0; j < numCols; j++) {
+                if (j == bestPi) continue;
+                if (nameScores[j] > maxNameScore) {
+                    maxNameScore = nameScores[j];
+                    bestNi = j;
+                }
+            }
+
+            // Fallback defaults
+            if (bestPi == -1 || maxPhoneScore == 0) bestPi = 1;
+            if (bestNi == -1 || maxNameScore == 0) bestNi = (bestPi == 0) ? 1 : 0;
+
+            autoPi = bestPi;
+            autoNi = bestNi;
+
+            if (phoneIndices.isEmpty()) phoneIndices.add(bestPi);
+            if (nameIndices.isEmpty()) nameIndices.add(bestNi);
+            fellBackToAutoDetect = true;
+        }
+
+        // Check if it's Google Contacts
+        boolean isGoogleContacts = false;
+        if (hasHeader) {
+            for (String col : firstRow) {
+                String c = col.toLowerCase().replaceAll("[^a-z0-9]", "");
+                if (c.equals("phone1value") || c.equals("firstname") || c.equals("lastname")) {
+                    isGoogleContacts = true;
+                    break;
+                }
+            }
+        }
+
+        // Set detected format info
+        if (isGoogleContacts) {
+            detectedFormat = "Google Contacts CSV (Multi-kolom)";
+        } else if (hasHeader && !fellBackToAutoDetect) {
+            StringBuilder phoneCols = new StringBuilder();
+            for (int idx : phoneIndices) {
+                if (phoneCols.length() > 0) phoneCols.append(", ");
+                if (idx < firstRow.size()) phoneCols.append("'").append(firstRow.get(idx)).append("'");
+            }
+            StringBuilder nameCols = new StringBuilder();
+            for (int idx : nameIndices) {
+                if (nameCols.length() > 0) nameCols.append(", ");
+                if (idx < firstRow.size()) nameCols.append("'").append(firstRow.get(idx)).append("'");
+            }
+            detectedFormat = "CSV dengan Header [Nama: " + nameCols.toString() + ", Nomor: " + phoneCols.toString() + "]";
+        } else {
+            int pi = phoneIndices.get(0);
+            int ni = nameIndices.get(0);
+            detectedFormat = (hasHeader ? "CSV dengan Header Kustom" : "CSV tanpa Header") + " - Auto-detect [Nama: Kolom " + (ni + 1) + ", Nomor: Kolom " + (pi + 1) + "]";
+        }
+
+        // Determine if we should skip the first row (header row)
+        boolean skipFirstRow = hasHeader;
+        if (!skipFirstRow && allRows.size() > 1) {
+            int pi = phoneIndices.get(0);
+            if (pi < firstRow.size()) {
+                String firstVal = firstRow.get(pi);
+                if (!isLikelyPhone(firstVal)) {
+                    int phoneCountInSubsequent = 0;
+                    int checkLimit = Math.min(allRows.size(), 10);
+                    for (int i = 1; i < checkLimit; i++) {
+                        List<String> row = allRows.get(i);
+                        if (pi < row.size() && isLikelyPhone(row.get(pi))) {
+                            phoneCountInSubsequent++;
+                        }
+                    }
+                    if (phoneCountInSubsequent > 0) {
+                        skipFirstRow = true;
+                        // Adjust detectedFormat name since first row was indeed a header
+                        detectedFormat = "CSV dengan Header (Unrecognized) - Auto-detect [Nama: Kolom " + (nameIndices.get(0) + 1) + ", Nomor: Kolom " + (pi + 1) + "]";
+                    }
+                }
+            }
+        }
+
+        // 3. Parse all data rows
+        int startRow = skipFirstRow ? 1 : 0;
+        for (int i = startRow; i < allRows.size(); i++) {
+            List<String> row = allRows.get(i);
+            
+            // Build name
+            StringBuilder sbName = new StringBuilder();
+            for (int idx : nameIndices) {
+                if (idx < row.size()) {
+                    String val = row.get(idx).trim();
+                    if (!val.isEmpty()) {
+                        if (sbName.length() > 0) sbName.append(" ");
+                        sbName.append(val);
+                    }
+                }
+            }
+            
+            // Get all phone numbers
+            List<String> rowPhones = new ArrayList<>();
+            for (int idx : phoneIndices) {
+                if (idx < row.size()) {
+                    String phone = row.get(idx).trim();
+                    if (!phone.isEmpty()) {
+                        rowPhones.add(phone);
+                    }
+                }
+            }
+            
+            if (!rowPhones.isEmpty()) {
+                ContactEntry entry = new ContactEntry();
+                entry.name = sbName.toString().trim();
+                if (entry.name.isEmpty()) {
+                    entry.name = rowPhones.get(0);
+                }
+                entry.phones.addAll(rowPhones);
+                list.add(entry);
+            }
+        }
+
+        return list;
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> result = new ArrayList<>();
+        boolean inQuotes = false;
+        StringBuilder curVal = new StringBuilder();
+        int len = line.length();
+        for (int i = 0; i < len; i++) {
+            char c = line.charAt(i);
+            if (c == '\"') {
+                if (inQuotes && i + 1 < len && line.charAt(i + 1) == '\"') {
+                    curVal.append('\"');
+                    i++; // skip next quote
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                result.add(curVal.toString().trim());
+                curVal.setLength(0);
+            } else {
+                curVal.append(c);
+            }
+        }
+        result.add(curVal.toString().trim());
+        return result;
+    }
+
+    private boolean isPhoneHeader(String s) {
+        if (s == null) return false;
+        String h = s.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (h.contains("label") || h.contains("type")) return false;
+        return h.contains("phone") || h.contains("tel") || h.contains("hp") || h.contains("nomor") || h.contains("mobile") || h.contains("contact");
+    }
+
+    private boolean isNameHeader(String s) {
+        if (s == null) return false;
+        String h = s.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (h.contains("phonetic")) return false;
+        return h.contains("name") || h.contains("nama") || h.contains("display") || h.contains("given") || h.contains("family") || h.contains("first") || h.contains("last");
+    }
+
+    private boolean isLikelyPhone(String val) {
+        if (val == null) return false;
+        String trimmed = val.trim();
+        if (trimmed.isEmpty()) return false;
+        if (!trimmed.matches("^[0-9+\\s\\-().]+$")) return false;
+        int digitCount = 0;
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (Character.isDigit(trimmed.charAt(i))) {
+                digitCount++;
+            }
+        }
+        return digitCount >= 6 && digitCount <= 16;
+    }
+
+    private boolean isLikelyName(String val) {
+        if (val == null) return false;
+        String trimmed = val.trim();
+        if (trimmed.isEmpty()) return false;
+        if (isLikelyPhone(trimmed)) return false;
+        boolean hasLetter = false;
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (Character.isLetter(trimmed.charAt(i))) {
+                hasLetter = true;
+                break;
+            }
+        }
+        return hasLetter;
     }
 
     private int saveContactsBatch(List<ContactEntry> contacts, String accountType, String accountName) {
@@ -1401,6 +1657,138 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String safe(String s) { return s == null ? "" : s.replace("\"", "'"); }
+
+    private void showImportPreviewDialog() {
+        if (allParsedContacts == null || allParsedContacts.isEmpty()) {
+            Toast.makeText(this, "Tidak ada data untuk di-preview.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int limit = Math.min(allParsedContacts.size(), 20);
+        List<ContactEntry> previewList = allParsedContacts.subList(0, limit);
+
+        float dp = getResources().getDisplayMetrics().density;
+        int pad = (int)(12 * dp);
+
+        // Legend header
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setBackgroundColor(0xFF0F172A);
+        header.setPadding(pad, pad, pad, pad);
+
+        LinearLayout legendRow = new LinearLayout(this);
+        legendRow.setOrientation(LinearLayout.HORIZONTAL);
+        addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)  ", 0xFFEF4444);
+        addLegendItem(legendRow, "🟢 Baru (Akan Simpan)", 0xFF34D399);
+        header.addView(legendRow);
+
+        TextView tvCount = new TextView(this);
+        tvCount.setText("Menampilkan " + limit + " dari " + allParsedContacts.size() + " kontak");
+        tvCount.setTextColor(0xFF64748B);
+        tvCount.setTextSize(11);
+        tvCount.setPadding(0, (int)(6*dp), 0, 0);
+        header.addView(tvCount);
+
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setBackgroundColor(0xFF0F172A);
+        listView.setDivider(null);
+        listView.setDividerHeight((int)(4 * dp));
+
+        android.widget.ArrayAdapter<ContactEntry> adapter = new android.widget.ArrayAdapter<ContactEntry>(
+                this, 0, previewList) {
+            @Override
+            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                ViewHolder vh;
+                if (convertView == null) {
+                    LinearLayout rowOuter = new LinearLayout(getContext());
+                    rowOuter.setOrientation(LinearLayout.HORIZONTAL);
+
+                    android.view.View bar = new android.view.View(getContext());
+                    LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams((int)(4*dp), LinearLayout.LayoutParams.MATCH_PARENT);
+                    bar.setLayoutParams(barLp);
+
+                    LinearLayout inner = new LinearLayout(getContext());
+                    inner.setOrientation(LinearLayout.VERTICAL);
+                    inner.setBackgroundColor(0xFF1E293B);
+                    inner.setPadding((int)(10*dp), (int)(8*dp), (int)(10*dp), (int)(8*dp));
+                    inner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+                    TextView tvName  = new TextView(getContext());
+                    tvName.setTextSize(13); tvName.setTextColor(0xFFE2E8F0);
+                    tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    TextView tvPhone = new TextView(getContext());
+                    tvPhone.setTextSize(11); tvPhone.setTextColor(0xFF94A3B8);
+
+                    TextView tvSrc   = new TextView(getContext());
+                    tvSrc.setTextSize(10);
+
+                    inner.addView(tvName);
+                    inner.addView(tvPhone);
+                    inner.addView(tvSrc);
+
+                    rowOuter.addView(bar);
+                    rowOuter.addView(inner);
+                    convertView = rowOuter;
+
+                    vh = new ViewHolder();
+                    vh.bar = bar; vh.tvName = tvName; vh.tvPhone = tvPhone; vh.tvSrc = tvSrc;
+                    convertView.setTag(vh);
+                } else {
+                    vh = (ViewHolder) convertView.getTag();
+                }
+
+                ContactEntry c = getItem(position);
+                boolean isDup = false;
+                if (c != null) {
+                    for (String p : c.phones) {
+                        if (existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
+                            isDup = true;
+                            break;
+                        }
+                    }
+                }
+
+                int color = isDup ? 0xFFEF4444 : 0xFF34D399;
+                String label = isDup ? "🔴 DUPLIKAT (Skip)" : "🟢 BARU (Simpan)";
+
+                vh.bar.setBackgroundColor(color);
+                vh.tvName.setText(c != null && c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+                
+                StringBuilder sbPhones = new StringBuilder();
+                if (c != null) {
+                    for (String p : c.phones) {
+                        if (sbPhones.length() > 0) sbPhones.append(", ");
+                        sbPhones.append(p);
+                    }
+                }
+                vh.tvPhone.setText("📞 " + (sbPhones.length() > 0 ? sbPhones.toString() : "-"));
+                vh.tvSrc.setText(label);
+                vh.tvSrc.setTextColor(color);
+
+                return convertView;
+            }
+        };
+
+        listView.setAdapter(adapter);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(header);
+        root.addView(listView);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("👁️ Preview Import (20 Sampel Pertama)")
+            .setView(root)
+            .setPositiveButton("Tutup", null)
+            .create();
+
+        dialog.setOnShowListener(d -> {
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            listView.setMinimumHeight((int)(screenH * 0.65f));
+        });
+        dialog.show();
+    }
 
     // ─── MODELS ──────────────────────────────────────────────────────────────────
 
