@@ -1690,7 +1690,50 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        List<ContactEntry> previewList = allParsedContacts;
+        List<ContactEntry> previewList = new ArrayList<>(allParsedContacts);
+        previewList.sort((a, b) -> {
+            boolean isDupA = false;
+            if (a != null && existingPhonesForPreview != null) {
+                for (String p : a.phones) {
+                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
+                        isDupA = true;
+                        break;
+                    }
+                }
+            }
+
+            boolean isDupB = false;
+            if (b != null && existingPhonesForPreview != null) {
+                for (String p : b.phones) {
+                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
+                        isDupB = true;
+                        break;
+                    }
+                }
+            }
+
+            int rankA = isDupA ? 1 : 0;
+            int rankB = isDupB ? 1 : 0;
+            if (rankA != rankB) return Integer.compare(rankA, rankB);
+
+            String na = (a != null && a.name != null) ? a.name : "";
+            String nb = (b != null && b.name != null) ? b.name : "";
+            return na.compareToIgnoreCase(nb);
+        });
+
+        int countNew = 0, countDup = 0;
+        for (ContactEntry c : previewList) {
+            boolean isDup = false;
+            if (c != null && existingPhonesForPreview != null) {
+                for (String p : c.phones) {
+                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
+                        isDup = true;
+                        break;
+                    }
+                }
+            }
+            if (isDup) countDup++; else countNew++;
+        }
 
         float dp = getResources().getDisplayMetrics().density;
         int pad = (int)(12 * dp);
@@ -1703,12 +1746,12 @@ public class MainActivity extends AppCompatActivity {
 
         LinearLayout legendRow = new LinearLayout(this);
         legendRow.setOrientation(LinearLayout.HORIZONTAL);
-        addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)  ", 0xFFEF4444);
-        addLegendItem(legendRow, "🟢 Baru (Akan Simpan)", 0xFF34D399);
+        addLegendItem(legendRow, "🟢 Baru (Akan Simpan)  ", 0xFF34D399);
+        addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)", 0xFFEF4444);
         header.addView(legendRow);
 
         TextView tvCount = new TextView(this);
-        tvCount.setText("Menampilkan " + previewList.size() + " kontak");
+        tvCount.setText("Total: " + previewList.size() + " kontak  |  🟢 " + countNew + " Baru  |  🔴 " + countDup + " Duplikat");
         tvCount.setTextColor(0xFF64748B);
         tvCount.setTextSize(11);
         tvCount.setPadding(0, (int)(6*dp), 0, 0);
