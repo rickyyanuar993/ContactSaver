@@ -141,7 +141,7 @@
                         android:layout_marginBottom="8dp"/>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
-                        <CheckBox android:id="@+id/chkAnalyzeGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <CheckBox android:id="@+id/chkAnalyzeGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
@@ -149,7 +149,7 @@
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Memori HP" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
-                        <CheckBox android:id="@+id/chkAnalyzeSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <CheckBox android:id="@+id/chkAnalyzeSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SIM Card" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
@@ -442,7 +442,7 @@
                     android:layout_marginBottom="16dp">
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
-                        <CheckBox android:id="@+id/chkGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <CheckBox android:id="@+id/chkGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
                     </LinearLayout>
 
@@ -452,7 +452,7 @@
                     </LinearLayout>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
-                        <CheckBox android:id="@+id/chkSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <CheckBox android:id="@+id/chkSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SIM Card" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
                     </LinearLayout>
 

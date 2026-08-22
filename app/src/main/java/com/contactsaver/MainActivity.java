@@ -201,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
         btnDeleteAll.setOnClickListener(v -> confirmDeleteAll());
         btnBackupFilterAll.setOnClickListener(v -> startBackupFiltered(false));
         btnBackupFilterUnique.setOnClickListener(v -> startBackupFiltered(true));
-        btnApplyFilter.setOnClickListener(v -> openStatsPage());
+        btnApplyFilter.setOnClickListener(v -> calculateStats());
         btnViewContacts.setOnClickListener(v -> showContactListDialog());
 
         // Listeners Backup
@@ -288,6 +288,17 @@ public class MainActivity extends AppCompatActivity {
         layoutBackup.setVisibility(View.GONE);
         layoutSettings.setVisibility(View.GONE);
         page.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if ((layoutStats != null && layoutStats.getVisibility() == View.VISIBLE)
+                || (layoutBackup != null && layoutBackup.getVisibility() == View.VISIBLE)
+                || (layoutSettings != null && layoutSettings.getVisibility() == View.VISIBLE)) {
+            showPage(layoutMain);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private void openSettingsPage() {
@@ -539,6 +550,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void openStatsPage() {
         showPage(layoutStats);
+        tvStatsTotal.setText("📱 Total Kontak: -");
+        tvStatsUnique.setText("✨ Unik: -");
+        tvStatsDuplicate.setText("🔁 Duplikat: -");
+        tvStatsSource.setText("📂 Sumber Kontak:\n💡 Pilih sumber filter di atas, lalu tap 'Terapkan Filter & Hitung Ulang'.");
+        tvStatsStatus.setText("Tap 'Terapkan Filter & Hitung Ulang' untuk memulai.");
+        progressStats.setVisibility(View.GONE);
+        btnDeleteDuplicates.setEnabled(false);
+        btnDeleteAll.setEnabled(false);
+        btnBackupFilterAll.setEnabled(false);
+        btnBackupFilterUnique.setEnabled(false);
+        btnViewContacts.setEnabled(false);
+    }
+
+    private void calculateStats() {
         tvStatsTotal.setText("⏳ Menghitung...");
         tvStatsDuplicate.setText("⏳");
         tvStatsUnique.setText("⏳");
@@ -633,6 +658,7 @@ public class MainActivity extends AppCompatActivity {
                     btnBackupFilterUnique.setEnabled(fTotal > 0);
                     btnViewContacts.setEnabled(fTotal > 0);
                     if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat!");
+                    else tvStatsStatus.setText("Siap.");
                 });
             } catch (Exception e) {
                 mainHandler.post(() -> {
@@ -907,7 +933,7 @@ public class MainActivity extends AppCompatActivity {
                     progressStats.setVisibility(View.GONE);
                     tvStatsStatus.setText("✅ Berhasil hapus " + fd + " duplikat!");
                     duplicateGroups.clear();
-                    openStatsPage();
+                    calculateStats();
                 });
             } catch (Exception e) {
                 mainHandler.post(() -> {
@@ -1121,7 +1147,7 @@ public class MainActivity extends AppCompatActivity {
                 tvStatsStatus.setText("✅ Berhasil hapus " + fd + " kontak!");
                 lastFilteredContacts.clear();
                 duplicateGroups.clear();
-                openStatsPage(); // refresh stats
+                calculateStats(); // refresh stats
             });
         });
     }
