@@ -1597,13 +1597,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private int saveContactsBatch(List<ContactEntry> contacts, String accountType, String accountName) {
-        // Build one giant ops list with chunks of 200 contacts per applyBatch call
-        // Each contact = 1 RawContact insert + 1 StructuredName + N phone inserts
-        // Using backReferences within each chunk — fastest method for bulk inserts
+        // High-performance bulk insert:
+        // 1. Chunk size = 300 contacts (~900 operations per batch) for optimal Binder throughput
+        // 2. CALLER_IS_SYNCADAPTER = "true" to eliminate redundant broadcast overhead
+        // 3. AGGREGATION_MODE_DISABLED to bypass expensive CPU contact-matching during insertion
         int saved = 0;
-        final int CHUNK = 200;
-        int total = contacts.size();
+        final int CHUNK = 300;
+        final int total = contacts.size();
         int processed = 0;
+
+        final Uri rawContactsUri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+            .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
+        final Uri dataUri = ContactsContract.Data.CONTENT_URI.buildUpon()
+            .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
 
         while (processed < total) {
             int end = Math.min(processed + CHUNK, total);
@@ -1614,12 +1620,15 @@ public class MainActivity extends AppCompatActivity {
 
             for (ContactEntry c : chunk) {
                 int rawContactOpIndex = opIndex;
-                ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                ops.add(ContentProviderOperation.newInsert(rawContactsUri)
                     .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName).build());
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
+                    .withValue(ContactsContract.RawContacts.AGGREGATION_MODE,
+                        ContactsContract.RawContacts.AGGREGATION_MODE_DISABLED)
+                    .build());
                 opIndex++;
 
-                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                ops.add(ContentProviderOperation.newInsert(dataUri)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactOpIndex)
                     .withValue(ContactsContract.Data.MIMETYPE,
                         ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
@@ -1627,7 +1636,7 @@ public class MainActivity extends AppCompatActivity {
                 opIndex++;
 
                 for (String phone : c.phones) {
-                    ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    ops.add(ContentProviderOperation.newInsert(dataUri)
                         .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactOpIndex)
                         .withValue(ContactsContract.Data.MIMETYPE,
                             ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
@@ -1646,16 +1655,19 @@ public class MainActivity extends AppCompatActivity {
                 for (ContactEntry c : chunk) {
                     try {
                         ArrayList<ContentProviderOperation> single = new ArrayList<>();
-                        single.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                        single.add(ContentProviderOperation.newInsert(rawContactsUri)
                             .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
-                            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName).build());
-                        single.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
+                            .withValue(ContactsContract.RawContacts.AGGREGATION_MODE,
+                                ContactsContract.RawContacts.AGGREGATION_MODE_DISABLED)
+                            .build());
+                        single.add(ContentProviderOperation.newInsert(dataUri)
                             .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                             .withValue(ContactsContract.Data.MIMETYPE,
                                 ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
                             .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, c.name).build());
                         for (String phone : c.phones) {
-                            single.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                            single.add(ContentProviderOperation.newInsert(dataUri)
                                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                                 .withValue(ContactsContract.Data.MIMETYPE,
                                     ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
