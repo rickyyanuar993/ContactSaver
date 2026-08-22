@@ -49,17 +49,20 @@ public class MainActivity extends AppCompatActivity {
     private Button btnPickFile, btnAnalyze, btnProcess, btnGoStats, btnGoBackup, btnGoSettings, btnPreviewImport;
     private TextView tvFileName, tvStatus, tvResult, tvAnalyzeStatus, tvAnalyzeResult, tvSaveDestNote;
     private ProgressBar progressBar, progressAnalyze;
-    private LinearLayout layoutResult, layoutAnalyzeResult, layoutGoogleAccountPicker;
+    private LinearLayout layoutResult, layoutAnalyzeResult, layoutGoogleAccountPicker, layoutAnalyzeGoogleAccountPicker;
     private CheckBox chkAnalyzeGoogle, chkAnalyzePhone, chkAnalyzeSim, chkAnalyzeWa, chkAnalyzeWaBiz;
     private android.widget.RadioGroup rgSaveDestination;
     private android.widget.RadioButton rbSavePhone, rbSaveGoogle;
-    private Spinner spinnerGoogleAccount;
+    private Spinner spinnerGoogleAccount, spinnerAnalyzeGoogleAccount;
     private List<android.accounts.Account> googleAccounts = new ArrayList<>();
+    private List<String> googleAccountNames = new ArrayList<>();
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
     private Button btnDeleteDuplicates, btnDeleteAll, btnBackupFilterAll, btnBackupFilterUnique, btnBackFromStats, btnApplyFilter, btnViewContacts;
     private ProgressBar progressStats;
+    private LinearLayout layoutStatsGoogleAccountPicker;
+    private Spinner spinnerStatsGoogleAccount;
     private CheckBox chkGoogle, chkPhone, chkSim, chkWa, chkWaBusiness, chkOther;
 
     // Filtered contacts list (for "Lihat Kontak" dialog)
@@ -124,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
         layoutResult         = findViewById(R.id.layoutResult);
         layoutAnalyzeResult  = findViewById(R.id.layoutAnalyzeResult);
         layoutGoogleAccountPicker = findViewById(R.id.layoutGoogleAccountPicker);
+        layoutAnalyzeGoogleAccountPicker = findViewById(R.id.layoutAnalyzeGoogleAccountPicker);
+        spinnerAnalyzeGoogleAccount      = findViewById(R.id.spinnerAnalyzeGoogleAccount);
         chkAnalyzeGoogle     = findViewById(R.id.chkAnalyzeGoogle);
         chkAnalyzePhone      = findViewById(R.id.chkAnalyzePhone);
         chkAnalyzeSim        = findViewById(R.id.chkAnalyzeSim);
@@ -133,6 +138,11 @@ public class MainActivity extends AppCompatActivity {
         rbSavePhone          = findViewById(R.id.rbSavePhone);
         rbSaveGoogle         = findViewById(R.id.rbSaveGoogle);
         spinnerGoogleAccount = findViewById(R.id.spinnerGoogleAccount);
+
+        chkAnalyzeGoogle.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (layoutAnalyzeGoogleAccountPicker != null)
+                layoutAnalyzeGoogleAccountPicker.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
 
         // Stats
         tvStatsTotal         = findViewById(R.id.tvStatsTotal);
@@ -148,12 +158,19 @@ public class MainActivity extends AppCompatActivity {
         tvStatsStatus        = findViewById(R.id.tvStatsStatus);
         btnApplyFilter       = findViewById(R.id.btnApplyFilter);
         btnViewContacts      = findViewById(R.id.btnViewContacts);
+        layoutStatsGoogleAccountPicker = findViewById(R.id.layoutStatsGoogleAccountPicker);
+        spinnerStatsGoogleAccount      = findViewById(R.id.spinnerStatsGoogleAccount);
         chkGoogle            = findViewById(R.id.chkGoogle);
         chkPhone             = findViewById(R.id.chkPhone);
         chkSim               = findViewById(R.id.chkSim);
         chkWa                = findViewById(R.id.chkWa);
         chkWaBusiness        = findViewById(R.id.chkWaBusiness);
         chkOther             = findViewById(R.id.chkOther);
+
+        chkGoogle.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (layoutStatsGoogleAccountPicker != null)
+                layoutStatsGoogleAccountPicker.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
 
         // Backup
         tvBackupInfo         = findViewById(R.id.tvBackupInfo);
@@ -308,18 +325,48 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadGoogleAccounts() {
         try {
-            android.accounts.Account[] accounts = AccountManager.get(this)
-                .getAccountsByType("com.google");
-            googleAccounts.clear();
-            googleAccounts.addAll(Arrays.asList(accounts));
+            Set<String> namesSet = new LinkedHashSet<>();
+            try {
+                android.accounts.Account[] accounts = AccountManager.get(this)
+                    .getAccountsByType("com.google");
+                googleAccounts.clear();
+                if (accounts != null) {
+                    googleAccounts.addAll(Arrays.asList(accounts));
+                    for (android.accounts.Account a : accounts) namesSet.add(a.name);
+                }
+            } catch (Exception ignored) {}
 
-            if (googleAccounts.isEmpty()) {
+            // Fallback / supplement: query distinct Google accounts from Contacts Provider
+            if (namesSet.isEmpty()) {
+                try {
+                    Cursor c = getContentResolver().query(
+                        ContactsContract.RawContacts.CONTENT_URI,
+                        new String[]{ContactsContract.RawContacts.ACCOUNT_NAME},
+                        ContactsContract.RawContacts.ACCOUNT_TYPE + "=?",
+                        new String[]{"com.google"},
+                        null
+                    );
+                    if (c != null) {
+                        while (c.moveToNext()) {
+                            String name = c.getString(0);
+                            if (name != null && !name.trim().isEmpty()) {
+                                namesSet.add(name.trim());
+                            }
+                        }
+                        c.close();
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            googleAccountNames.clear();
+            googleAccountNames.addAll(namesSet);
+
+            if (googleAccountNames.isEmpty()) {
                 rbSaveGoogle.setEnabled(false);
                 rbSaveGoogle.setText("☁️ Google Account (tidak ada akun Google di HP)");
             } else {
-                String[] names = new String[googleAccounts.size()];
-                for (int i = 0; i < googleAccounts.size(); i++) names[i] = googleAccounts.get(i).name;
-                ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                String[] names = googleAccountNames.toArray(new String[0]);
+                ArrayAdapter<String> saveAdapter = new ArrayAdapter<String>(this,
                         android.R.layout.simple_spinner_item, names) {
                     @Override public View getView(int pos, View cv, android.view.ViewGroup p) {
                         View v = super.getView(pos, cv, p);
@@ -330,8 +377,30 @@ public class MainActivity extends AppCompatActivity {
                         ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
                     }
                 };
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                spinnerGoogleAccount.setAdapter(adapter);
+                saveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerGoogleAccount.setAdapter(saveAdapter);
+
+                // Setup filter dropdown (with "🌐 Semua Akun Google" at index 0)
+                String[] filterOptions = new String[googleAccountNames.size() + 1];
+                filterOptions[0] = "🌐 Semua Akun Google";
+                for (int i = 0; i < googleAccountNames.size(); i++) {
+                    filterOptions[i + 1] = "📧 " + googleAccountNames.get(i);
+                }
+
+                ArrayAdapter<String> filterAdapter = new ArrayAdapter<String>(this,
+                        android.R.layout.simple_spinner_item, filterOptions) {
+                    @Override public View getView(int pos, View cv, android.view.ViewGroup p) {
+                        View v = super.getView(pos, cv, p);
+                        ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setTextSize(12); return v;
+                    }
+                    @Override public View getDropDownView(int pos, View cv, android.view.ViewGroup p) {
+                        View v = super.getDropDownView(pos, cv, p);
+                        ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
+                    }
+                };
+                filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                if (spinnerAnalyzeGoogleAccount != null) spinnerAnalyzeGoogleAccount.setAdapter(filterAdapter);
+                if (spinnerStatsGoogleAccount != null) spinnerStatsGoogleAccount.setAdapter(filterAdapter);
             }
         } catch (Exception e) {
             rbSaveGoogle.setEnabled(false);
@@ -403,6 +472,11 @@ public class MainActivity extends AppCompatActivity {
         final boolean inclWa     = chkAnalyzeWa.isChecked();
         final boolean inclWaBiz  = chkAnalyzeWaBiz.isChecked();
 
+        final int selAnalyzeGoogle = (spinnerAnalyzeGoogleAccount != null && spinnerAnalyzeGoogleAccount.getSelectedItemPosition() > 0)
+            ? spinnerAnalyzeGoogleAccount.getSelectedItemPosition() : 0;
+        final String selectedAnalyzeGoogleAccountName = (selAnalyzeGoogle > 0 && selAnalyzeGoogle - 1 < googleAccountNames.size())
+            ? googleAccountNames.get(selAnalyzeGoogle - 1) : null;
+
         executor.execute(() -> {
             try {
                 // Baca semua kontak lalu filter sesuai pilihan user
@@ -410,7 +484,10 @@ public class MainActivity extends AppCompatActivity {
                 Set<String> existing = new HashSet<>();
                 for (PhoneContact c : allContacts) {
                     String src = resolveSource(c.accountType);
-                    if (src.equals(SRC_GOOGLE)  && !inclGoogle) continue;
+                    if (src.equals(SRC_GOOGLE)) {
+                        if (!inclGoogle) continue;
+                        if (selectedAnalyzeGoogleAccountName != null && (c.accountName == null || !c.accountName.equalsIgnoreCase(selectedAnalyzeGoogleAccountName))) continue;
+                    }
                     if (src.equals(SRC_PHONE)   && !inclPhone)  continue;
                     if (src.equals(SRC_SIM)     && !inclSim)    continue;
                     if (src.equals(SRC_WA)      && !inclWa)     continue;
@@ -420,7 +497,9 @@ public class MainActivity extends AppCompatActivity {
 
                 // Build label sumber yang dicek
                 List<String> srcChecked = new ArrayList<>();
-                if (inclGoogle) srcChecked.add("Google");
+                if (inclGoogle) {
+                    srcChecked.add(selectedAnalyzeGoogleAccountName != null ? "Google (" + selectedAnalyzeGoogleAccountName + ")" : "Google (Semua Akun)");
+                }
                 if (inclPhone)  srcChecked.add("HP");
                 if (inclSim)    srcChecked.add("SIM");
                 if (inclWa)     srcChecked.add("WA");
@@ -584,6 +663,11 @@ public class MainActivity extends AppCompatActivity {
         final boolean inclWaBiz   = chkWaBusiness.isChecked();
         final boolean inclOther   = chkOther.isChecked();
 
+        final int selStatsGoogle = (spinnerStatsGoogleAccount != null && spinnerStatsGoogleAccount.getSelectedItemPosition() > 0)
+            ? spinnerStatsGoogleAccount.getSelectedItemPosition() : 0;
+        final String selectedStatsGoogleAccountName = (selStatsGoogle > 0 && selStatsGoogle - 1 < googleAccountNames.size())
+            ? googleAccountNames.get(selStatsGoogle - 1) : null;
+
         executor.execute(() -> {
             try {
                 List<PhoneContact> all = getAllContactsWithSource();
@@ -592,7 +676,10 @@ public class MainActivity extends AppCompatActivity {
                 List<PhoneContact> filtered = new ArrayList<>();
                 for (PhoneContact c : all) {
                     String src = resolveSource(c.accountType);
-                    if (src.equals(SRC_GOOGLE)  && !inclGoogle)  continue;
+                    if (src.equals(SRC_GOOGLE)) {
+                        if (!inclGoogle) continue;
+                        if (selectedStatsGoogleAccountName != null && (c.accountName == null || !c.accountName.equalsIgnoreCase(selectedStatsGoogleAccountName))) continue;
+                    }
                     if (src.equals(SRC_PHONE)   && !inclPhone)   continue;
                     if (src.equals(SRC_SIM)     && !inclSim)     continue;
                     if (src.equals(SRC_WA)      && !inclWa)      continue;
@@ -620,25 +707,30 @@ public class MainActivity extends AppCompatActivity {
                 }
                 int uniqueCount = total - dupCount;
 
-                // Build source map with Google account name info
+                // Build source map with detailed per-account breakdown
                 Map<String, Integer> srcMap = new LinkedHashMap<>();
-                Map<String, Set<String>> googleAccounts = new LinkedHashMap<>();
+                Map<String, Integer> googleAccountDetails = new LinkedHashMap<>();
                 for (PhoneContact c : filtered) {
                     String src = resolveSource(c.accountType);
                     srcMap.put(src, srcMap.getOrDefault(src, 0) + 1);
                     if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty()) {
-                        if (!googleAccounts.containsKey(src)) googleAccounts.put(src, new LinkedHashSet<>());
-                        googleAccounts.get(src).add(c.accountName);
+                        googleAccountDetails.put(c.accountName, googleAccountDetails.getOrDefault(c.accountName, 0) + 1);
                     }
                 }
                 StringBuilder sb = new StringBuilder();
                 for (Map.Entry<String, Integer> e : srcMap.entrySet()) {
-                    sb.append("• ").append(e.getKey()).append(": ").append(e.getValue()).append(" kontak");
-                    if (e.getKey().equals(SRC_GOOGLE) && googleAccounts.containsKey(SRC_GOOGLE)) {
-                        sb.append("\n  📧 Akun: ");
-                        sb.append(String.join(", ", googleAccounts.get(SRC_GOOGLE)));
+                    if (e.getKey().equals(SRC_GOOGLE)) {
+                        if (selectedStatsGoogleAccountName != null) {
+                            sb.append("• ").append(e.getKey()).append(" (").append(selectedStatsGoogleAccountName).append("): ").append(e.getValue()).append(" kontak\n");
+                        } else {
+                            sb.append("• ").append(e.getKey()).append(" (Semua Akun): ").append(e.getValue()).append(" kontak\n");
+                            for (Map.Entry<String, Integer> gEntry : googleAccountDetails.entrySet()) {
+                                sb.append("   └ 📧 ").append(gEntry.getKey()).append(": ").append(gEntry.getValue()).append(" kontak\n");
+                            }
+                        }
+                    } else {
+                        sb.append("• ").append(e.getKey()).append(": ").append(e.getValue()).append(" kontak\n");
                     }
-                    sb.append("\n");
                 }
 
                 final int fTotal = total, fDup = dupCount, fUniq = uniqueCount;
@@ -1074,7 +1166,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Build sumber yang aktif
         List<String> activeFilters = new ArrayList<>();
-        if (chkGoogle.isChecked())      activeFilters.add("Google Account");
+        if (chkGoogle.isChecked()) {
+            int sel = (spinnerStatsGoogleAccount != null) ? spinnerStatsGoogleAccount.getSelectedItemPosition() : 0;
+            if (sel > 0 && sel - 1 < googleAccountNames.size()) {
+                activeFilters.add("Google Account (" + googleAccountNames.get(sel - 1) + ")");
+            } else {
+                activeFilters.add("Google Account (Semua Akun)");
+            }
+        }
         if (chkPhone.isChecked())       activeFilters.add("Memori HP");
         if (chkSim.isChecked())         activeFilters.add("SIM Card");
         if (chkWa.isChecked())          activeFilters.add("WhatsApp");

@@ -144,6 +144,32 @@
                         <CheckBox android:id="@+id/chkAnalyzeGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
                     </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layoutAnalyzeGoogleAccountPicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginStart="28dp"
+                        android:layout_marginBottom="6dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Akun: "
+                            android:textColor="#94A3B8"
+                            android:textSize="12sp"/>
+
+                        <Spinner
+                            android:id="@+id/spinnerAnalyzeGoogleAccount"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:popupBackground="#1E293B"/>
+                    </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
                         <CheckBox android:id="@+id/chkAnalyzePhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Memori HP" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
@@ -444,6 +470,33 @@
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
                         <CheckBox android:id="@+id/chkGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#34D399"/>
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="14sp" android:layout_marginStart="8dp"/>
+                    </LinearLayout>
+
+                    <!-- Google Account Selector in Stats -->
+                    <LinearLayout
+                        android:id="@+id/layoutStatsGoogleAccountPicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginStart="28dp"
+                        android:layout_marginBottom="10dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Akun: "
+                            android:textColor="#94A3B8"
+                            android:textSize="12sp"/>
+
+                        <Spinner
+                            android:id="@+id/spinnerStatsGoogleAccount"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:popupBackground="#1E293B"/>
                     </LinearLayout>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="10dp">
