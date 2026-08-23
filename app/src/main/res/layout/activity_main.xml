@@ -1240,6 +1240,10 @@
                         android:lineSpacingMultiplier="1.5"/>
                 </LinearLayout>
 
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
     <!-- ═══ HALAMAN HAPUS KONTAK DARI FILE ═══ -->
     <LinearLayout
         android:id="@+id/layoutDeleteByFile"

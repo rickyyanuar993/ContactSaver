@@ -2225,7 +2225,7 @@ public class MainActivity extends AppCompatActivity {
                 digitCount++;
             }
         }
-        return digitCount >= 7 && digitCount <= 15;
+        return digitCount >= 7 && digitCount <= 14;
     }
 
     private boolean isLikelyName(String val) {
@@ -2265,7 +2265,7 @@ public class MainActivity extends AppCompatActivity {
                 if (Character.isDigit(cleaned.charAt(k))) digitCount++;
             }
 
-            if (digitCount >= 8 && digitCount <= 15) {
+            if (digitCount >= 8 && digitCount <= 14) {
                 validPhones++;
                 score += 10;
                 // High confidence phone prefixes (Indonesian & International)
@@ -2278,7 +2278,7 @@ public class MainActivity extends AppCompatActivity {
                 if (val.matches("^[0-9+\\s\\-().]+$")) {
                     score += 10;
                 }
-            } else if (digitCount > 0 && (digitCount < 6 || digitCount > 18)) {
+            } else if (digitCount > 0 && (digitCount < 6 || digitCount > 15)) {
                 // Penalize IDs, zip codes, timestamps
                 score -= 20;
             }
@@ -2461,8 +2461,8 @@ public class MainActivity extends AppCompatActivity {
         // 1. WhatsApp Group JID format (120xxxxxxxx, typically 14-20 digits)
         if (digits.startsWith("120") && len >= 14) return true;
 
-        // 2. Too short (< 7 digit) or too long (> 15 digit)
-        if (len < 7 || len > 15) return true;
+        // 2. Too short (< 7 digit) or too long (> 14 digit)
+        if (len < 7 || len > 14) return true;
 
         // 3. Repetitive dummy numbers (e.g. 0000000, 11111111)
         if (digits.matches("^(\\d)\\1+$")) return true;
