@@ -248,6 +248,105 @@
                         android:fontFamily="monospace"
                         android:lineSpacingMultiplier="1.6"/>
 
+                    <!-- Custom CSV Column Mapping UI -->
+                    <LinearLayout
+                        android:id="@+id/layoutCsvColumnMapping"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="#0F172A"
+                        android:padding="14dp"
+                        android:layout_marginTop="14dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="⚙️ ATUR PEMETAAN KOLOM CSV:"
+                            android:textColor="#38BDF8"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="10dp"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+                            <CheckBox
+                                android:id="@+id/chkCsvHasHeader"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:buttonTint="#38BDF8"/>
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Baris 1 adalah Header/Judul (abaikan)"
+                                android:textColor="#E2E8F0"
+                                android:textSize="12sp"
+                                android:layout_marginStart="4dp"/>
+                        </LinearLayout>
+
+                        <!-- Kolom Nama -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="105dp"
+                                android:layout_height="wrap_content"
+                                android:text="👤 Kolom Nama:"
+                                android:textColor="#94A3B8"
+                                android:textSize="12sp"
+                                android:textStyle="bold"/>
+                            <Spinner
+                                android:id="@+id/spinnerCsvNameCol"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:background="#1E293B"
+                                android:popupBackground="#1E293B"/>
+                        </LinearLayout>
+
+                        <!-- Kolom Nomor HP -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <TextView
+                                android:layout_width="105dp"
+                                android:layout_height="wrap_content"
+                                android:text="📞 Kolom No HP:"
+                                android:textColor="#94A3B8"
+                                android:textSize="12sp"
+                                android:textStyle="bold"/>
+                            <Spinner
+                                android:id="@+id/spinnerCsvPhoneCol"
+                                android:layout_width="0dp"
+                                android:layout_height="40dp"
+                                android:layout_weight="1"
+                                android:background="#1E293B"
+                                android:popupBackground="#1E293B"/>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnViewSampleCsv"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="📋 Lihat Sample CSV (10 Data)"
+                        android:textSize="13sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#38BDF8"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone"/>
+
                     <Button
                         android:id="@+id/btnPreviewImport"
                         android:layout_width="match_parent"
@@ -256,7 +355,7 @@
                         android:textSize="13sp"
                         android:textColor="#0F172A"
                         android:backgroundTint="#F59E0B"
-                        android:layout_marginTop="12dp"/>
+                        android:layout_marginTop="8dp"/>
                 </LinearLayout>
 
                 <!-- LANGKAH 3 -->

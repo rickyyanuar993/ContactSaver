@@ -83,6 +83,17 @@ public class MainActivity extends AppCompatActivity {
     private List<ContactEntry> allParsedContacts = null;
     private Set<String> existingPhonesForPreview = null;
     private String detectedFormat = "";
+    private String lastAnalyzeSrcLabel = "";
+
+    // CSV column mapping state
+    private LinearLayout layoutCsvColumnMapping;
+    private Spinner spinnerCsvNameCol, spinnerCsvPhoneCol;
+    private CheckBox chkCsvHasHeader;
+    private Button btnViewSampleCsv;
+    private List<List<String>> rawCsvRows = new ArrayList<>();
+    private boolean isApplyingMapping = false;
+    private int detectedNameCol = 0, detectedPhoneCol = 1;
+    private boolean detectedHasHeader = true;
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -203,6 +214,32 @@ public class MainActivity extends AppCompatActivity {
                 : "💡 Kontak tersimpan lokal di HP, tidak otomatis sync ke Google.");
         });
 
+        // CSV Mapping
+        layoutCsvColumnMapping   = findViewById(R.id.layoutCsvColumnMapping);
+        spinnerCsvNameCol        = findViewById(R.id.spinnerCsvNameCol);
+        spinnerCsvPhoneCol       = findViewById(R.id.spinnerCsvPhoneCol);
+        chkCsvHasHeader          = findViewById(R.id.chkCsvHasHeader);
+        btnViewSampleCsv         = findViewById(R.id.btnViewSampleCsv);
+
+        btnViewSampleCsv.setOnClickListener(v -> showSampleCsvDialog());
+
+        android.widget.AdapterView.OnItemSelectedListener csvMappingListener = new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
+                    reapplyCsvColumnMapping();
+                }
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        };
+        spinnerCsvNameCol.setOnItemSelectedListener(csvMappingListener);
+        spinnerCsvPhoneCol.setOnItemSelectedListener(csvMappingListener);
+        chkCsvHasHeader.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
+                reapplyCsvColumnMapping();
+            }
+        });
+
         // Listeners Main
         btnPickFile.setOnClickListener(v -> pickFile());
         btnAnalyze.setOnClickListener(v -> startAnalyze());
@@ -314,7 +351,12 @@ public class MainActivity extends AppCompatActivity {
                 || (layoutSettings != null && layoutSettings.getVisibility() == View.VISIBLE)) {
             showPage(layoutMain);
         } else {
-            super.onBackPressed();
+            new AlertDialog.Builder(this)
+                .setTitle("⚠️ Keluar Aplikasi")
+                .setMessage("Apakah Anda yakin ingin keluar dari aplikasi Contact Saver?")
+                .setPositiveButton("Ya, Keluar", (dialog, which) -> finishAffinity())
+                .setNegativeButton("Batal", null)
+                .show();
         }
     }
 
@@ -442,7 +484,10 @@ public class MainActivity extends AppCompatActivity {
             analyzedToSave = null;
             allParsedContacts = null;
             existingPhonesForPreview = null;
+            rawCsvRows.clear();
             detectedFormat = "";
+            if (layoutCsvColumnMapping != null) layoutCsvColumnMapping.setVisibility(View.GONE);
+            if (btnViewSampleCsv != null) btnViewSampleCsv.setVisibility(View.GONE);
             layoutAnalyzeResult.setVisibility(View.GONE);
             layoutResult.setVisibility(View.GONE);
             tvAnalyzeStatus.setText("File dipilih. Tap 'Analisis File' untuk mengecek.");
@@ -530,6 +575,9 @@ public class MainActivity extends AppCompatActivity {
                 analyzedToSave = toSave;
                 allParsedContacts = fileContacts;
                 existingPhonesForPreview = existing;
+                lastAnalyzeSrcLabel = srcLabel;
+
+                final boolean isCsvFile = !isVcf && rawCsvRows != null && !rawCsvRows.isEmpty();
 
                 mainHandler.post(() -> {
                     progressAnalyze.setVisibility(View.GONE);
@@ -538,6 +586,55 @@ public class MainActivity extends AppCompatActivity {
                     btnPreviewImport.setEnabled(total > 0);
                     tvAnalyzeStatus.setText("✅ Analisis selesai!");
                     layoutAnalyzeResult.setVisibility(View.VISIBLE);
+
+                    if (isCsvFile) {
+                        int numCols = 0;
+                        for (List<String> r : rawCsvRows) {
+                            if (r.size() > numCols) numCols = r.size();
+                        }
+                        if (numCols == 0) numCols = 1;
+
+                        String[] colOptions = new String[numCols];
+                        List<String> fRow = rawCsvRows.get(0);
+                        List<String> sRow = rawCsvRows.size() > 1 ? rawCsvRows.get(1) : null;
+                        for (int j = 0; j < numCols; j++) {
+                            String header = (detectedHasHeader && j < fRow.size()) ? fRow.get(j).trim() : "";
+                            String sample = (sRow != null && j < sRow.size()) ? sRow.get(j).trim() : (j < fRow.size() ? fRow.get(j).trim() : "");
+                            if (sample.length() > 16) sample = sample.substring(0, 14) + "..";
+                            colOptions[j] = "Kolom " + (j + 1) + (header.isEmpty() ? "" : ": " + header) + (sample.isEmpty() ? "" : " (" + sample + ")");
+                        }
+
+                        ArrayAdapter<String> colAdapter = new ArrayAdapter<String>(MainActivity.this,
+                                android.R.layout.simple_spinner_item, colOptions) {
+                            @Override public View getView(int pos, View cv, android.view.ViewGroup p) {
+                                View v = super.getView(pos, cv, p);
+                                ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setTextSize(12); return v;
+                            }
+                            @Override public View getDropDownView(int pos, View cv, android.view.ViewGroup p) {
+                                View v = super.getDropDownView(pos, cv, p);
+                                ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
+                            }
+                        };
+                        colAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+                        isApplyingMapping = true;
+                        spinnerCsvNameCol.setAdapter(colAdapter);
+                        spinnerCsvPhoneCol.setAdapter(colAdapter);
+
+                        int selN = (detectedNameCol >= 0 && detectedNameCol < numCols) ? detectedNameCol : 0;
+                        int selP = (detectedPhoneCol >= 0 && detectedPhoneCol < numCols) ? detectedPhoneCol : (numCols > 1 ? 1 : 0);
+                        spinnerCsvNameCol.setSelection(selN);
+                        spinnerCsvPhoneCol.setSelection(selP);
+                        chkCsvHasHeader.setChecked(detectedHasHeader);
+                        isApplyingMapping = false;
+
+                        layoutCsvColumnMapping.setVisibility(View.VISIBLE);
+                        btnViewSampleCsv.setVisibility(View.VISIBLE);
+                    } else {
+                        layoutCsvColumnMapping.setVisibility(View.GONE);
+                        btnViewSampleCsv.setVisibility(View.GONE);
+                    }
+
                     tvAnalyzeResult.setText(
                         "📊 HASIL ANALISIS FILE\n\n" +
                         "📁 Nama File              : " + getFileName(selectedFileUri) + "\n" +
@@ -1413,6 +1510,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private List<ContactEntry> parseVcf(Uri uri) throws Exception {
+        rawCsvRows.clear();
         List<ContactEntry> list = new ArrayList<>();
         BufferedReader r = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uri), "UTF-8"));
         ContactEntry cur = null; String line;
@@ -1624,7 +1722,155 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        detectedNameCol = nameIndices.isEmpty() ? 0 : nameIndices.get(0);
+        detectedPhoneCol = phoneIndices.isEmpty() ? (numCols > 1 ? 1 : 0) : phoneIndices.get(0);
+        detectedHasHeader = skipFirstRow;
+        rawCsvRows = allRows;
+
         return list;
+    }
+
+    private void showSampleCsvDialog() {
+        if (rawCsvRows == null || rawCsvRows.isEmpty()) {
+            Toast.makeText(this, "Tidak ada data CSV untuk ditampilkan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int totalRows = rawCsvRows.size();
+        int maxSample = Math.min(totalRows, 10);
+        int maxCols = 0;
+        for (int i = 0; i < maxSample; i++) {
+            if (rawCsvRows.get(i).size() > maxCols) {
+                maxCols = rawCsvRows.get(i).size();
+            }
+        }
+
+        if (maxCols == 0) {
+            Toast.makeText(this, "File CSV kosong.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create horizontal and vertical scroll containers
+        android.widget.HorizontalScrollView hScrollView = new android.widget.HorizontalScrollView(this);
+        android.widget.ScrollView vScrollView = new android.widget.ScrollView(this);
+        android.widget.TableLayout table = new android.widget.TableLayout(this);
+        table.setPadding(16, 16, 16, 16);
+        table.setBackgroundColor(0xFF0F172A);
+
+        // Header row with Kolom 1, Kolom 2, ...
+        android.widget.TableRow headerRow = new android.widget.TableRow(this);
+        headerRow.setBackgroundColor(0xFF1E293B);
+
+        // Row Number header
+        TextView tvNoHeader = new TextView(this);
+        tvNoHeader.setText(" Baris ");
+        tvNoHeader.setTextColor(0xFF38BDF8);
+        tvNoHeader.setTextSize(12);
+        tvNoHeader.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvNoHeader.setPadding(14, 12, 14, 12);
+        headerRow.addView(tvNoHeader);
+
+        for (int c = 0; c < maxCols; c++) {
+            TextView tvCol = new TextView(this);
+            tvCol.setText(" Kolom " + (c + 1) + " ");
+            tvCol.setTextColor(0xFF38BDF8);
+            tvCol.setTextSize(12);
+            tvCol.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvCol.setPadding(16, 12, 16, 12);
+            headerRow.addView(tvCol);
+        }
+        table.addView(headerRow);
+
+        // Data rows
+        for (int r = 0; r < maxSample; r++) {
+            List<String> row = rawCsvRows.get(r);
+            android.widget.TableRow dataRow = new android.widget.TableRow(this);
+            dataRow.setBackgroundColor(r % 2 == 0 ? 0xFF131D31 : 0xFF0F172A);
+
+            TextView tvRowIdx = new TextView(this);
+            tvRowIdx.setText(" #" + (r + 1) + " ");
+            tvRowIdx.setTextColor(0xFF94A3B8);
+            tvRowIdx.setTextSize(11);
+            tvRowIdx.setPadding(14, 10, 14, 10);
+            dataRow.addView(tvRowIdx);
+
+            for (int c = 0; c < maxCols; c++) {
+                String val = (c < row.size()) ? row.get(c) : "";
+                TextView tvCell = new TextView(this);
+                tvCell.setText(val);
+                tvCell.setTextColor(0xFFE2E8F0);
+                tvCell.setTextSize(12);
+                tvCell.setTypeface(android.graphics.Typeface.MONOSPACE);
+                tvCell.setPadding(16, 10, 16, 10);
+                dataRow.addView(tvCell);
+            }
+            table.addView(dataRow);
+        }
+
+        vScrollView.addView(table);
+        hScrollView.addView(vScrollView);
+
+        new AlertDialog.Builder(this)
+            .setTitle("📋 Sample Data CSV (" + maxSample + " Baris Pertama)")
+            .setView(hScrollView)
+            .setPositiveButton("Tutup", null)
+            .show();
+    }
+
+    private void reapplyCsvColumnMapping() {
+        if (rawCsvRows == null || rawCsvRows.isEmpty()) return;
+
+        int nameCol = spinnerCsvNameCol != null ? spinnerCsvNameCol.getSelectedItemPosition() : 0;
+        int phoneCol = spinnerCsvPhoneCol != null ? spinnerCsvPhoneCol.getSelectedItemPosition() : 1;
+        boolean skipHeader = chkCsvHasHeader != null && chkCsvHasHeader.isChecked();
+
+        List<ContactEntry> fileContacts = new ArrayList<>();
+        int startRow = skipHeader ? 1 : 0;
+        for (int i = startRow; i < rawCsvRows.size(); i++) {
+            List<String> row = rawCsvRows.get(i);
+            String name = (nameCol >= 0 && nameCol < row.size()) ? row.get(nameCol).trim() : "";
+            String phone = (phoneCol >= 0 && phoneCol < row.size()) ? row.get(phoneCol).trim() : "";
+            if (phone.isEmpty()) continue;
+            if (name.isEmpty()) name = "Kontak " + phone;
+            ContactEntry entry = new ContactEntry(name, phone);
+            fileContacts.add(entry);
+        }
+
+        List<ContactEntry> toSave = new ArrayList<>();
+        List<ContactEntry> dupList = new ArrayList<>();
+        for (ContactEntry c : fileContacts) {
+            boolean dup = false;
+            for (String p : c.phones) {
+                if (existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
+                    dup = true;
+                    break;
+                }
+            }
+            if (dup) dupList.add(c); else toSave.add(c);
+        }
+
+        analyzedToSave = toSave;
+        allParsedContacts = fileContacts;
+        final int total = fileContacts.size();
+        final int dupCount = dupList.size();
+        final int uniqueCount = toSave.size();
+
+        btnProcess.setEnabled(uniqueCount > 0);
+        btnPreviewImport.setEnabled(total > 0);
+        tvAnalyzeResult.setText(
+            "📊 HASIL ANALISIS FILE (PEMETAAN KUSTOM)\n\n" +
+            "📁 Nama File              : " + getFileName(selectedFileUri) + "\n" +
+            "📝 Format                 : CSV Kustom [Nama: Kolom " + (nameCol + 1) + ", No HP: Kolom " + (phoneCol + 1) + "]\n" +
+            "📁 Total kontak di file   : " + total + " kontak\n" +
+            "🔍 Dicek duplikat dari    : " + (lastAnalyzeSrcLabel.isEmpty() ? "HP" : lastAnalyzeSrcLabel) + "\n" +
+            "🔁 Sudah ada (skip)       : " + dupCount + " kontak\n" +
+            "✨ Baru & unik             : " + uniqueCount + " kontak\n\n" +
+            (uniqueCount > 0
+                ? "➡️ Langkah 3: Pilih tujuan simpan\n   lalu tap 'Simpan Kontak Unik'."
+                : "ℹ️ Semua kontak di file sudah ada di HP.")
+        );
+        if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru untuk disimpan.");
+        else tvStatus.setText("Siap menyimpan " + uniqueCount + " kontak unik.");
     }
 
     private List<String> parseCsvLine(String line) {
