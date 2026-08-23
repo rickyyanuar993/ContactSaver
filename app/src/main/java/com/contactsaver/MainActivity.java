@@ -1736,85 +1736,134 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        int totalRows = rawCsvRows.size();
-        int maxSample = Math.min(totalRows, 10);
+        final int totalRows = rawCsvRows.size();
         int maxCols = 0;
-        for (int i = 0; i < maxSample; i++) {
-            if (rawCsvRows.get(i).size() > maxCols) {
-                maxCols = rawCsvRows.get(i).size();
-            }
+        int checkLimit = Math.min(totalRows, 100);
+        for (int i = 0; i < checkLimit; i++) {
+            if (rawCsvRows.get(i).size() > maxCols) maxCols = rawCsvRows.get(i).size();
         }
+        if (maxCols == 0) maxCols = 1;
+        final int finalMaxCols = maxCols;
 
-        if (maxCols == 0) {
-            Toast.makeText(this, "File CSV kosong.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        float dp = getResources().getDisplayMetrics().density;
+        final int colWidth = (int)(150 * dp);
+        final int rowIdxWidth = (int)(60 * dp);
+        final int cellPadH = (int)(12 * dp);
+        final int cellPadV = (int)(10 * dp);
 
-        // Create horizontal and vertical scroll containers
-        android.widget.HorizontalScrollView hScrollView = new android.widget.HorizontalScrollView(this);
-        android.widget.ScrollView vScrollView = new android.widget.ScrollView(this);
-        android.widget.TableLayout table = new android.widget.TableLayout(this);
-        table.setPadding(16, 16, 16, 16);
-        table.setBackgroundColor(0xFF0F172A);
-
-        // Header row with Kolom 1, Kolom 2, ...
-        android.widget.TableRow headerRow = new android.widget.TableRow(this);
+        // Header Row
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setBackgroundColor(0xFF1E293B);
 
-        // Row Number header
-        TextView tvNoHeader = new TextView(this);
-        tvNoHeader.setText(" Baris ");
-        tvNoHeader.setTextColor(0xFF38BDF8);
-        tvNoHeader.setTextSize(12);
-        tvNoHeader.setTypeface(null, android.graphics.Typeface.BOLD);
-        tvNoHeader.setPadding(14, 12, 14, 12);
-        headerRow.addView(tvNoHeader);
+        TextView tvNoHdr = new TextView(this);
+        tvNoHdr.setText("Baris");
+        tvNoHdr.setTextColor(0xFF38BDF8);
+        tvNoHdr.setTextSize(12);
+        tvNoHdr.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvNoHdr.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        tvNoHdr.setPadding(cellPadH, cellPadV, cellPadH, cellPadV);
+        tvNoHdr.setLayoutParams(new LinearLayout.LayoutParams(rowIdxWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+        headerRow.addView(tvNoHdr);
 
-        for (int c = 0; c < maxCols; c++) {
+        for (int c = 0; c < finalMaxCols; c++) {
             TextView tvCol = new TextView(this);
-            tvCol.setText(" Kolom " + (c + 1) + " ");
+            tvCol.setText("Kolom " + (c + 1));
             tvCol.setTextColor(0xFF38BDF8);
             tvCol.setTextSize(12);
             tvCol.setTypeface(null, android.graphics.Typeface.BOLD);
-            tvCol.setPadding(16, 12, 16, 12);
+            tvCol.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            tvCol.setPadding(cellPadH, cellPadV, cellPadH, cellPadV);
+            tvCol.setLayoutParams(new LinearLayout.LayoutParams(colWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
             headerRow.addView(tvCol);
         }
-        table.addView(headerRow);
 
-        // Data rows
-        for (int r = 0; r < maxSample; r++) {
-            List<String> row = rawCsvRows.get(r);
-            android.widget.TableRow dataRow = new android.widget.TableRow(this);
-            dataRow.setBackgroundColor(r % 2 == 0 ? 0xFF131D31 : 0xFF0F172A);
+        // Virtualized ListView for buttery-smooth rendering of all rows
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setBackgroundColor(0xFF0F172A);
+        listView.setDivider(null);
 
-            TextView tvRowIdx = new TextView(this);
-            tvRowIdx.setText(" #" + (r + 1) + " ");
-            tvRowIdx.setTextColor(0xFF94A3B8);
-            tvRowIdx.setTextSize(11);
-            tvRowIdx.setPadding(14, 10, 14, 10);
-            dataRow.addView(tvRowIdx);
-
-            for (int c = 0; c < maxCols; c++) {
-                String val = (c < row.size()) ? row.get(c) : "";
-                TextView tvCell = new TextView(this);
-                tvCell.setText(val);
-                tvCell.setTextColor(0xFFE2E8F0);
-                tvCell.setTextSize(12);
-                tvCell.setTypeface(android.graphics.Typeface.MONOSPACE);
-                tvCell.setPadding(16, 10, 16, 10);
-                dataRow.addView(tvCell);
-            }
-            table.addView(dataRow);
+        class CsvRowViewHolder {
+            TextView tvRowIdx;
+            TextView[] tvCells;
         }
 
-        vScrollView.addView(table);
-        hScrollView.addView(vScrollView);
+        android.widget.ArrayAdapter<List<String>> adapter = new android.widget.ArrayAdapter<List<String>>(
+                this, 0, rawCsvRows) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                CsvRowViewHolder vh;
+                if (convertView == null) {
+                    LinearLayout row = new LinearLayout(getContext());
+                    row.setOrientation(LinearLayout.HORIZONTAL);
 
-        new AlertDialog.Builder(this)
-            .setTitle("📋 Sample Data CSV (" + maxSample + " Baris Pertama)")
+                    TextView tvIdx = new TextView(getContext());
+                    tvIdx.setTextSize(11);
+                    tvIdx.setTextColor(0xFF94A3B8);
+                    tvIdx.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                    tvIdx.setPadding(cellPadH, cellPadV, cellPadH, cellPadV);
+                    tvIdx.setLayoutParams(new LinearLayout.LayoutParams(rowIdxWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+                    row.addView(tvIdx);
+
+                    TextView[] cells = new TextView[finalMaxCols];
+                    for (int c = 0; c < finalMaxCols; c++) {
+                        TextView tvCell = new TextView(getContext());
+                        tvCell.setTextSize(12);
+                        tvCell.setTextColor(0xFFE2E8F0);
+                        tvCell.setTypeface(android.graphics.Typeface.MONOSPACE);
+                        tvCell.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                        tvCell.setPadding(cellPadH, cellPadV, cellPadH, cellPadV);
+                        tvCell.setLayoutParams(new LinearLayout.LayoutParams(colWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+                        row.addView(tvCell);
+                        cells[c] = tvCell;
+                    }
+
+                    vh = new CsvRowViewHolder();
+                    vh.tvRowIdx = tvIdx;
+                    vh.tvCells = cells;
+                    row.setTag(vh);
+                    convertView = row;
+                } else {
+                    vh = (CsvRowViewHolder) convertView.getTag();
+                }
+
+                convertView.setBackgroundColor(position % 2 == 0 ? 0xFF131D31 : 0xFF0F172A);
+                vh.tvRowIdx.setText("#" + (position + 1));
+
+                List<String> dataRow = getItem(position);
+                for (int c = 0; c < finalMaxCols; c++) {
+                    String val = (dataRow != null && c < dataRow.size()) ? dataRow.get(c) : "";
+                    vh.tvCells[c].setText(val);
+                }
+
+                return convertView;
+            }
+        };
+
+        listView.setAdapter(adapter);
+
+        // Container inside horizontal scroll view
+        LinearLayout tableContainer = new LinearLayout(this);
+        tableContainer.setOrientation(LinearLayout.VERTICAL);
+        tableContainer.setBackgroundColor(0xFF0F172A);
+        tableContainer.addView(headerRow);
+        tableContainer.addView(listView);
+
+        android.widget.HorizontalScrollView hScrollView = new android.widget.HorizontalScrollView(this);
+        hScrollView.setBackgroundColor(0xFF0F172A);
+        hScrollView.addView(tableContainer);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("📋 Tabel Data CSV (" + totalRows + " Baris)")
             .setView(hScrollView)
             .setPositiveButton("Tutup", null)
-            .show();
+            .create();
+
+        dialog.setOnShowListener(d -> {
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            listView.setMinimumHeight((int)(screenH * 0.65f));
+        });
+        dialog.show();
     }
 
     private void reapplyCsvColumnMapping() {
