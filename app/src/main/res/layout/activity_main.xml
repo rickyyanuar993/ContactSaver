@@ -627,6 +627,111 @@
                         android:textStyle="bold"/>
                 </LinearLayout>
 
+                <!-- ═══ CARD CEK STATUS NOMOR ═══ -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🔍 CEK STATUS NOMOR DI HP"
+                    android:textSize="11sp"
+                    android:textColor="#38BDF8"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="16dp"
+                    android:layout_marginBottom="24dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Masukkan nomor HP untuk mengecek apakah sudah tersimpan di HP, Google Account, SIM, atau WhatsApp:"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:lineSpacingMultiplier="1.3"
+                        android:layout_marginBottom="10dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+
+                        <EditText
+                            android:id="@+id/etCheckPhoneNumber"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:hint="Misal: 08123456789 atau +62812..."
+                            android:textColorHint="#64748B"
+                            android:textColor="#F8FAFC"
+                            android:textSize="13sp"
+                            android:paddingHorizontal="12dp"
+                            android:inputType="phone"
+                            android:imeOptions="actionSearch"
+                            android:singleLine="true"
+                            android:layout_marginEnd="8dp"/>
+
+                        <Button
+                            android:id="@+id/btnCheckSinglePhone"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:text="🔍 Cek"
+                            android:textSize="13sp"
+                            android:textColor="#0F172A"
+                            android:backgroundTint="#38BDF8"
+                            android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <!-- Loading / Progress for single phone check -->
+                    <ProgressBar
+                        android:id="@+id/progressCheckPhone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:indeterminateTint="#38BDF8"
+                        android:visibility="gone"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="8dp"/>
+
+                    <!-- Result Box -->
+                    <LinearLayout
+                        android:id="@+id/layoutCheckPhoneResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="#0F172A"
+                        android:padding="12dp"
+                        android:visibility="gone"
+                        android:layout_marginTop="6dp">
+
+                        <TextView
+                            android:id="@+id/tvCheckPhoneResultHeader"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Hasil Pengecekan:"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#34D399"
+                            android:layout_marginBottom="8dp"/>
+
+                        <TextView
+                            android:id="@+id/tvCheckPhoneResultDetails"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="12sp"
+                            android:textColor="#E2E8F0"
+                            android:lineSpacingMultiplier="1.4"
+                            android:fontFamily="monospace"/>
+                    </LinearLayout>
+                </LinearLayout>
+
                 <!-- Filter Sumber Kontak -->
                 <TextView
                     android:layout_width="match_parent"

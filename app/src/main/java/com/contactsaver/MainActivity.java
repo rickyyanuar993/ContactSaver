@@ -78,6 +78,13 @@ public class MainActivity extends AppCompatActivity {
     private Spinner spinnerStatsGoogleAccount;
     private CheckBox chkGoogle, chkPhone, chkSim, chkWa, chkWaBusiness, chkOther;
 
+    // Check Single Phone (Stats page)
+    private EditText etCheckPhoneNumber;
+    private Button btnCheckSinglePhone;
+    private ProgressBar progressCheckPhone;
+    private LinearLayout layoutCheckPhoneResult;
+    private TextView tvCheckPhoneResultHeader, tvCheckPhoneResultDetails;
+
     // Filtered contacts list (for "Lihat Kontak" dialog)
     private List<PhoneContact> lastFilteredContacts = new ArrayList<>();
 
@@ -191,6 +198,14 @@ public class MainActivity extends AppCompatActivity {
         chkWaBusiness        = findViewById(R.id.chkWaBusiness);
         chkOther             = findViewById(R.id.chkOther);
 
+        // Check Single Phone
+        etCheckPhoneNumber       = findViewById(R.id.etCheckPhoneNumber);
+        btnCheckSinglePhone      = findViewById(R.id.btnCheckSinglePhone);
+        progressCheckPhone       = findViewById(R.id.progressCheckPhone);
+        layoutCheckPhoneResult   = findViewById(R.id.layoutCheckPhoneResult);
+        tvCheckPhoneResultHeader = findViewById(R.id.tvCheckPhoneResultHeader);
+        tvCheckPhoneResultDetails= findViewById(R.id.tvCheckPhoneResultDetails);
+
         chkGoogle.setOnCheckedChangeListener((btn, isChecked) -> {
             if (layoutStatsGoogleAccountPicker != null)
                 layoutStatsGoogleAccountPicker.setVisibility(isChecked ? View.VISIBLE : View.GONE);
@@ -303,6 +318,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Listeners Stats
         btnBackFromStats.setOnClickListener(v -> showPage(layoutMain));
+        btnCheckSinglePhone.setOnClickListener(v -> checkSinglePhoneNumber());
+        etCheckPhoneNumber.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                checkSinglePhoneNumber();
+                return true;
+            }
+            return false;
+        });
         btnDeleteDuplicates.setOnClickListener(v -> confirmDeleteDuplicates());
         btnDeleteAll.setOnClickListener(v -> confirmDeleteAll());
         btnBackupFilterAll.setOnClickListener(v -> startBackupFiltered(false));
@@ -852,6 +875,113 @@ public class MainActivity extends AppCompatActivity {
         btnBackupFilterAll.setEnabled(false);
         btnBackupFilterUnique.setEnabled(false);
         btnViewContacts.setEnabled(false);
+        if (layoutCheckPhoneResult != null) layoutCheckPhoneResult.setVisibility(View.GONE);
+        if (progressCheckPhone != null) progressCheckPhone.setVisibility(View.GONE);
+    }
+
+    private void checkSinglePhoneNumber() {
+        if (etCheckPhoneNumber == null) return;
+        String input = etCheckPhoneNumber.getText().toString().trim();
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Masukkan nomor telepon yang ingin dicek!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String inputNorm = normalizePhone(input);
+        if (inputNorm.isEmpty()) {
+            Toast.makeText(this, "Format nomor tidak valid!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Hide keyboard
+        try {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null && getCurrentFocus() != null) {
+                imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+            }
+        } catch (Exception ignored) {}
+
+        btnCheckSinglePhone.setEnabled(false);
+        progressCheckPhone.setVisibility(View.VISIBLE);
+        layoutCheckPhoneResult.setVisibility(View.GONE);
+
+        executor.execute(() -> {
+            try {
+                List<PhoneContact> allContacts = getAllContactsWithSource();
+                List<PhoneContact> matches = new ArrayList<>();
+
+                for (PhoneContact c : allContacts) {
+                    if (c.phone != null && !c.phone.trim().isEmpty()) {
+                        String contactNorm = normalizePhone(c.phone);
+                        if (contactNorm.equals(inputNorm)) {
+                            matches.add(c);
+                        }
+                    }
+                }
+
+                final int count = matches.size();
+                final List<PhoneContact> finalMatches = matches;
+                final String searchedNumber = input;
+
+                mainHandler.post(() -> {
+                    progressCheckPhone.setVisibility(View.GONE);
+                    btnCheckSinglePhone.setEnabled(true);
+                    layoutCheckPhoneResult.setVisibility(View.VISIBLE);
+
+                    if (count > 0) {
+                        tvCheckPhoneResultHeader.setText("✅ DITEMUKAN: " + count + " Kontak di HP");
+                        tvCheckPhoneResultHeader.setTextColor(0xFF34D399); // Green
+
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("Nomor yang dicek: ").append(searchedNumber).append("\n\n");
+
+                        for (int i = 0; i < finalMatches.size(); i++) {
+                            PhoneContact c = finalMatches.get(i);
+                            String src = resolveSource(c.accountType);
+                            String sourceLabel;
+                            if (src.equals(SRC_GOOGLE) && c.accountName != null) {
+                                sourceLabel = "☁️ Google (" + c.accountName + ")";
+                            } else if (src.equals(SRC_PHONE)) {
+                                sourceLabel = "📱 Memori HP (Lokal)";
+                            } else if (src.equals(SRC_SIM)) {
+                                sourceLabel = "💳 Kartu SIM";
+                            } else if (src.equals(SRC_WA_BIZ)) {
+                                sourceLabel = "💬 WhatsApp Business";
+                            } else if (src.equals(SRC_WA)) {
+                                sourceLabel = "💬 WhatsApp";
+                            } else {
+                                sourceLabel = "📁 " + src;
+                            }
+
+                            sb.append(i + 1).append(". ")
+                              .append(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)")
+                              .append("\n   📞 ").append(c.phone != null ? c.phone : "-")
+                              .append("\n   📍 Sumber: ").append(sourceLabel)
+                              .append("\n\n");
+                        }
+
+                        tvCheckPhoneResultDetails.setText(sb.toString().trim());
+                    } else {
+                        tvCheckPhoneResultHeader.setText("❌ BELUM TERSIMPAN DI HP");
+                        tvCheckPhoneResultHeader.setTextColor(0xFFEF4444); // Red
+
+                        tvCheckPhoneResultDetails.setText(
+                            "Nomor: " + searchedNumber + "\n\n" +
+                            "ℹ️ Nomor ini tidak ditemukan di Google Account, Memori HP, Kartu SIM, maupun WhatsApp."
+                        );
+                    }
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    progressCheckPhone.setVisibility(View.GONE);
+                    btnCheckSinglePhone.setEnabled(true);
+                    layoutCheckPhoneResult.setVisibility(View.VISIBLE);
+                    tvCheckPhoneResultHeader.setText("❌ Terjadi Kesalahan");
+                    tvCheckPhoneResultHeader.setTextColor(0xFFEF4444);
+                    tvCheckPhoneResultDetails.setText("Error: " + e.getMessage());
+                });
+            }
+        });
     }
 
     private void calculateStats() {
