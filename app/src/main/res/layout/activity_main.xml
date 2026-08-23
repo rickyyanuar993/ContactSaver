@@ -877,7 +877,15 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textColor="#F59E0B"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:id="@+id/tvStatsNotOnWa"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#F43F5E"
+                        android:textSize="16sp"
+                        android:visibility="gone"/>
                 </LinearLayout>
 
                 <LinearLayout
@@ -924,6 +932,18 @@
                     android:textSize="15sp"
                     android:textColor="#FFFFFF"
                     android:backgroundTint="#D97706"
+                    android:enabled="false"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnDeleteNotOnWa"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="📵  Hapus Kontak Tidak Terdaftar WA"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#E11D48"
+                    android:visibility="gone"
                     android:enabled="false"
                     android:layout_marginBottom="8dp"/>
 
