@@ -2047,172 +2047,162 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        List<ContactEntry> previewList = new ArrayList<>(allParsedContacts);
-        previewList.sort((a, b) -> {
-            boolean isDupA = false;
-            if (a != null && existingPhonesForPreview != null) {
-                for (String p : a.phones) {
-                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
-                        isDupA = true;
-                        break;
-                    }
-                }
-            }
+        btnPreviewImport.setEnabled(false);
+        Toast.makeText(this, "Menyiapkan preview...", Toast.LENGTH_SHORT).show();
 
-            boolean isDupB = false;
-            if (b != null && existingPhonesForPreview != null) {
-                for (String p : b.phones) {
-                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
-                        isDupB = true;
-                        break;
-                    }
-                }
-            }
+        executor.execute(() -> {
+            List<ImportPreviewItem> previewList = new ArrayList<>(allParsedContacts.size());
+            int countNew = 0, countDup = 0;
 
-            int rankA = isDupA ? 1 : 0;
-            int rankB = isDupB ? 1 : 0;
-            if (rankA != rankB) return Integer.compare(rankA, rankB);
+            for (ContactEntry c : allParsedContacts) {
+                if (c == null) continue;
+                ImportPreviewItem item = new ImportPreviewItem();
+                item.name = (c.name != null && !c.name.trim().isEmpty()) ? c.name.trim() : "(Tanpa Nama)";
 
-            String na = (a != null && a.name != null) ? a.name : "";
-            String nb = (b != null && b.name != null) ? b.name : "";
-            return na.compareToIgnoreCase(nb);
-        });
-
-        int countNew = 0, countDup = 0;
-        for (ContactEntry c : previewList) {
-            boolean isDup = false;
-            if (c != null && existingPhonesForPreview != null) {
-                for (String p : c.phones) {
-                    if (existingPhonesForPreview.contains(normalizePhone(p))) {
-                        isDup = true;
-                        break;
-                    }
-                }
-            }
-            if (isDup) countDup++; else countNew++;
-        }
-
-        float dp = getResources().getDisplayMetrics().density;
-        int pad = (int)(12 * dp);
-
-        // Legend header
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        header.setBackgroundColor(0xFF0F172A);
-        header.setPadding(pad, pad, pad, pad);
-
-        LinearLayout legendRow = new LinearLayout(this);
-        legendRow.setOrientation(LinearLayout.HORIZONTAL);
-        addLegendItem(legendRow, "🟢 Baru (Akan Simpan)  ", 0xFF34D399);
-        addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)", 0xFFEF4444);
-        header.addView(legendRow);
-
-        TextView tvCount = new TextView(this);
-        tvCount.setText("Total: " + previewList.size() + " kontak  |  🟢 " + countNew + " Baru  |  🔴 " + countDup + " Duplikat");
-        tvCount.setTextColor(0xFF64748B);
-        tvCount.setTextSize(11);
-        tvCount.setPadding(0, (int)(6*dp), 0, 0);
-        header.addView(tvCount);
-
-        android.widget.ListView listView = new android.widget.ListView(this);
-        listView.setBackgroundColor(0xFF0F172A);
-        listView.setDivider(null);
-        listView.setDividerHeight((int)(4 * dp));
-
-        android.widget.ArrayAdapter<ContactEntry> adapter = new android.widget.ArrayAdapter<ContactEntry>(
-                this, 0, previewList) {
-            @Override
-            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
-                ViewHolder vh;
-                if (convertView == null) {
-                    LinearLayout rowOuter = new LinearLayout(getContext());
-                    rowOuter.setOrientation(LinearLayout.HORIZONTAL);
-
-                    android.view.View bar = new android.view.View(getContext());
-                    LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams((int)(4*dp), LinearLayout.LayoutParams.MATCH_PARENT);
-                    bar.setLayoutParams(barLp);
-
-                    LinearLayout inner = new LinearLayout(getContext());
-                    inner.setOrientation(LinearLayout.VERTICAL);
-                    inner.setBackgroundColor(0xFF1E293B);
-                    inner.setPadding((int)(10*dp), (int)(8*dp), (int)(10*dp), (int)(8*dp));
-                    inner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-
-                    TextView tvName  = new TextView(getContext());
-                    tvName.setTextSize(13); tvName.setTextColor(0xFFE2E8F0);
-                    tvName.setTypeface(null, android.graphics.Typeface.BOLD);
-
-                    TextView tvPhone = new TextView(getContext());
-                    tvPhone.setTextSize(11); tvPhone.setTextColor(0xFF94A3B8);
-
-                    TextView tvSrc   = new TextView(getContext());
-                    tvSrc.setTextSize(10);
-
-                    inner.addView(tvName);
-                    inner.addView(tvPhone);
-                    inner.addView(tvSrc);
-
-                    rowOuter.addView(bar);
-                    rowOuter.addView(inner);
-                    convertView = rowOuter;
-
-                    vh = new ViewHolder();
-                    vh.bar = bar; vh.tvName = tvName; vh.tvPhone = tvPhone; vh.tvSrc = tvSrc;
-                    convertView.setTag(vh);
-                } else {
-                    vh = (ViewHolder) convertView.getTag();
-                }
-
-                ContactEntry c = getItem(position);
+                StringBuilder sbPhones = new StringBuilder();
                 boolean isDup = false;
-                if (c != null) {
-                    for (String p : c.phones) {
-                        if (existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
+                for (String p : c.phones) {
+                    if (p != null && !p.trim().isEmpty()) {
+                        if (sbPhones.length() > 0) sbPhones.append(", ");
+                        sbPhones.append(p.trim());
+                        if (!isDup && existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
                             isDup = true;
-                            break;
                         }
                     }
                 }
+                item.phoneDisplay = sbPhones.length() > 0 ? "📞 " + sbPhones.toString() : "📞 -";
+                item.isDuplicate = isDup;
 
-                int color = isDup ? 0xFFEF4444 : 0xFF34D399;
-                String label = isDup ? "🔴 DUPLIKAT (Skip)" : "🟢 BARU (Simpan)";
-
-                vh.bar.setBackgroundColor(color);
-                vh.tvName.setText(c != null && c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
-                
-                StringBuilder sbPhones = new StringBuilder();
-                if (c != null) {
-                    for (String p : c.phones) {
-                        if (sbPhones.length() > 0) sbPhones.append(", ");
-                        sbPhones.append(p);
-                    }
-                }
-                vh.tvPhone.setText("📞 " + (sbPhones.length() > 0 ? sbPhones.toString() : "-"));
-                vh.tvSrc.setText(label);
-                vh.tvSrc.setTextColor(color);
-
-                return convertView;
+                if (isDup) countDup++; else countNew++;
+                previewList.add(item);
             }
-        };
 
-        listView.setAdapter(adapter);
+            // Blazing-fast O(1) sort: Baru (false) first, then alphabetical by name
+            previewList.sort((a, b) -> {
+                if (a.isDuplicate != b.isDuplicate) return a.isDuplicate ? 1 : -1;
+                return a.name.compareToIgnoreCase(b.name);
+            });
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.addView(header);
-        root.addView(listView);
+            final int fCountNew = countNew;
+            final int fCountDup = countDup;
+            final List<ImportPreviewItem> fPreviewList = previewList;
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("👁️ Preview Import (" + previewList.size() + " Kontak)")
-            .setView(root)
-            .setPositiveButton("Tutup", null)
-            .create();
+            mainHandler.post(() -> {
+                btnPreviewImport.setEnabled(true);
 
-        dialog.setOnShowListener(d -> {
-            int screenH = getResources().getDisplayMetrics().heightPixels;
-            listView.setMinimumHeight((int)(screenH * 0.65f));
+                float dp = getResources().getDisplayMetrics().density;
+                int pad = (int)(12 * dp);
+
+                // Legend header
+                LinearLayout header = new LinearLayout(MainActivity.this);
+                header.setOrientation(LinearLayout.VERTICAL);
+                header.setBackgroundColor(0xFF0F172A);
+                header.setPadding(pad, pad, pad, pad);
+
+                LinearLayout legendRow = new LinearLayout(MainActivity.this);
+                legendRow.setOrientation(LinearLayout.HORIZONTAL);
+                addLegendItem(legendRow, "🟢 Baru (Akan Simpan)  ", 0xFF34D399);
+                addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)", 0xFFEF4444);
+                header.addView(legendRow);
+
+                TextView tvCount = new TextView(MainActivity.this);
+                tvCount.setText("Total: " + fPreviewList.size() + " kontak  |  🟢 " + fCountNew + " Baru  |  🔴 " + fCountDup + " Duplikat");
+                tvCount.setTextColor(0xFF64748B);
+                tvCount.setTextSize(11);
+                tvCount.setPadding(0, (int)(6*dp), 0, 0);
+                header.addView(tvCount);
+
+                android.widget.ListView listView = new android.widget.ListView(MainActivity.this);
+                listView.setBackgroundColor(0xFF0F172A);
+                listView.setDivider(null);
+                listView.setDividerHeight((int)(4 * dp));
+
+                android.widget.ArrayAdapter<ImportPreviewItem> adapter = new android.widget.ArrayAdapter<ImportPreviewItem>(
+                        MainActivity.this, 0, fPreviewList) {
+                    @Override
+                    public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                        ViewHolder vh;
+                        if (convertView == null) {
+                            LinearLayout rowOuter = new LinearLayout(getContext());
+                            rowOuter.setOrientation(LinearLayout.HORIZONTAL);
+
+                            android.view.View bar = new android.view.View(getContext());
+                            LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams((int)(4*dp), LinearLayout.LayoutParams.MATCH_PARENT);
+                            bar.setLayoutParams(barLp);
+
+                            LinearLayout inner = new LinearLayout(getContext());
+                            inner.setOrientation(LinearLayout.VERTICAL);
+                            inner.setBackgroundColor(0xFF1E293B);
+                            inner.setPadding((int)(10*dp), (int)(8*dp), (int)(10*dp), (int)(8*dp));
+                            inner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+                            TextView tvName  = new TextView(getContext());
+                            tvName.setTextSize(13); tvName.setTextColor(0xFFE2E8F0);
+                            tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                            TextView tvPhone = new TextView(getContext());
+                            tvPhone.setTextSize(11); tvPhone.setTextColor(0xFF94A3B8);
+
+                            TextView tvSrc   = new TextView(getContext());
+                            tvSrc.setTextSize(10);
+
+                            inner.addView(tvName);
+                            inner.addView(tvPhone);
+                            inner.addView(tvSrc);
+
+                            rowOuter.addView(bar);
+                            rowOuter.addView(inner);
+                            convertView = rowOuter;
+
+                            vh = new ViewHolder();
+                            vh.bar = bar; vh.tvName = tvName; vh.tvPhone = tvPhone; vh.tvSrc = tvSrc;
+                            convertView.setTag(vh);
+                        } else {
+                            vh = (ViewHolder) convertView.getTag();
+                        }
+
+                        ImportPreviewItem item = getItem(position);
+                        if (item != null) {
+                            int color = item.isDuplicate ? 0xFFEF4444 : 0xFF34D399;
+                            String label = item.isDuplicate ? "🔴 DUPLIKAT (Skip)" : "🟢 BARU (Simpan)";
+
+                            vh.bar.setBackgroundColor(color);
+                            vh.tvName.setText(item.name);
+                            vh.tvPhone.setText(item.phoneDisplay);
+                            vh.tvSrc.setText(label);
+                            vh.tvSrc.setTextColor(color);
+                        }
+
+                        return convertView;
+                    }
+                };
+
+                listView.setAdapter(adapter);
+
+                LinearLayout root = new LinearLayout(MainActivity.this);
+                root.setOrientation(LinearLayout.VERTICAL);
+                root.addView(header);
+                root.addView(listView);
+
+                AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("👁️ Preview Import (" + fPreviewList.size() + " Kontak)")
+                    .setView(root)
+                    .setPositiveButton("Tutup", null)
+                    .create();
+
+                dialog.setOnShowListener(d -> {
+                    int screenH = getResources().getDisplayMetrics().heightPixels;
+                    listView.setMinimumHeight((int)(screenH * 0.65f));
+                });
+                dialog.show();
+            });
         });
-        dialog.show();
+    }
+
+    static class ImportPreviewItem {
+        String name;
+        String phoneDisplay;
+        boolean isDuplicate;
     }
 
     static class ContactEntry {
