@@ -2215,9 +2215,15 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    // ─── MODELS ──────────────────────────────────────────────────────────────────
-
-    static class ContactEntry { String name = ""; List<String> phones = new ArrayList<>(); }
+    static class ContactEntry {
+        String name = "";
+        List<String> phones = new ArrayList<>();
+        ContactEntry() {}
+        ContactEntry(String name, String phone) {
+            this.name = name;
+            if (phone != null && !phone.isEmpty()) this.phones.add(phone);
+        }
+    }
     static class PhoneContact { String name, phone, accountType, accountName; long rawContactId; }
     static class DuplicateGroup {
         String normalizedPhone; List<PhoneContact> contacts;
