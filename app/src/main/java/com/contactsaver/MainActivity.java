@@ -1691,6 +1691,35 @@ public class MainActivity extends AppCompatActivity {
         header.setPadding(pad, pad, pad, (int)(6 * dp));
         root.addView(header);
 
+        // Action button row: Copy Sample & Copy Semua
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setPadding(pad, 0, pad, (int)(8 * dp));
+
+        Button btnCopySample = new Button(this);
+        btnCopySample.setText("📋 Copy Sample...");
+        btnCopySample.setTextSize(12);
+        btnCopySample.setTextColor(0xFF0F172A);
+        btnCopySample.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+        LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0, (int)(42 * dp), 1);
+        lp1.setMargins(0, 0, (int)(6 * dp), 0);
+        btnCopySample.setLayoutParams(lp1);
+        btnCopySample.setOnClickListener(v -> showCopySampleDialog());
+
+        Button btnCopyAll = new Button(this);
+        btnCopyAll.setText("📋 Copy Semua (" + lastNotOnWaContacts.size() + ")");
+        btnCopyAll.setTextSize(12);
+        btnCopyAll.setTextColor(0xFF0F172A);
+        btnCopyAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF34D399));
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0, (int)(42 * dp), 1);
+        lp2.setMargins((int)(6 * dp), 0, 0, 0);
+        btnCopyAll.setLayoutParams(lp2);
+        btnCopyAll.setOnClickListener(v -> copyNotOnWaContactsToClipboard(lastNotOnWaContacts.size()));
+
+        actionRow.addView(btnCopySample);
+        actionRow.addView(btnCopyAll);
+        root.addView(actionRow);
+
         android.widget.ListView listView = new android.widget.ListView(this);
         listView.setBackgroundColor(0xFF0F172A);
         listView.setDivider(null);
@@ -1733,7 +1762,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 PhoneContact c = getItem(position);
-                tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+                tvName.setText((position + 1) + ". " + (c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)"));
                 tvPhone.setText("📵 " + (c.phone != null ? c.phone : "-"));
 
                 String src = resolveSource(c.accountType);
@@ -1760,6 +1789,90 @@ public class MainActivity extends AppCompatActivity {
             listView.setMinimumHeight((int)(screenH * 0.60f));
         });
         dialog.show();
+    }
+
+    private void showCopySampleDialog() {
+        if (lastNotOnWaContacts.isEmpty()) return;
+        final int max = lastNotOnWaContacts.size();
+        final float dp = getResources().getDisplayMetrics().density;
+
+        LinearLayout dialogRoot = new LinearLayout(this);
+        dialogRoot.setOrientation(LinearLayout.VERTICAL);
+        dialogRoot.setPadding((int)(20 * dp), (int)(16 * dp), (int)(20 * dp), (int)(10 * dp));
+
+        TextView tvDesc = new TextView(this);
+        tvDesc.setText("Pilih atau ketik jumlah sample nomor yang ingin di-copy (Tersedia: " + max + " nomor):");
+        tvDesc.setTextColor(0xFF94A3B8);
+        tvDesc.setTextSize(13);
+        tvDesc.setPadding(0, 0, 0, (int)(12 * dp));
+        dialogRoot.addView(tvDesc);
+
+        // Preset chips: 10, 20, 50, 100
+        LinearLayout chipRow = new LinearLayout(this);
+        chipRow.setOrientation(LinearLayout.HORIZONTAL);
+        chipRow.setPadding(0, 0, 0, (int)(12 * dp));
+
+        EditText etCount = new EditText(this);
+        etCount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        etCount.setHint("Jumlah nomor...");
+        etCount.setText(String.valueOf(Math.min(10, max)));
+        etCount.setTextColor(0xFFF8FAFC);
+        etCount.setBackgroundColor(0xFF0F172A);
+        etCount.setPadding((int)(12 * dp), (int)(10 * dp), (int)(12 * dp), (int)(10 * dp));
+
+        int[] presets = {10, 20, 50, 100};
+        for (int p : presets) {
+            Button b = new Button(this);
+            b.setText(String.valueOf(p));
+            b.setTextSize(12);
+            b.setTextColor(0xFF0F172A);
+            b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int)(38 * dp), 1);
+            lp.setMargins((int)(2 * dp), 0, (int)(2 * dp), 0);
+            b.setLayoutParams(lp);
+            b.setOnClickListener(v -> etCount.setText(String.valueOf(Math.min(p, max))));
+            chipRow.addView(b);
+        }
+        dialogRoot.addView(chipRow);
+        dialogRoot.addView(etCount);
+
+        new AlertDialog.Builder(this)
+            .setTitle("📋 Copy Sample Nomor")
+            .setView(dialogRoot)
+            .setPositiveButton("📋 Copy", (d, w) -> {
+                String str = etCount.getText().toString().trim();
+                int qty = 10;
+                try {
+                    qty = Integer.parseInt(str);
+                } catch (Exception ignored) {}
+                if (qty <= 0) qty = 10;
+                qty = Math.min(qty, max);
+                copyNotOnWaContactsToClipboard(qty);
+            })
+            .setNegativeButton("Batal", null)
+            .show();
+    }
+
+    private void copyNotOnWaContactsToClipboard(int count) {
+        if (lastNotOnWaContacts.isEmpty()) return;
+        int limit = Math.min(count, lastNotOnWaContacts.size());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < limit; i++) {
+            PhoneContact c = lastNotOnWaContacts.get(i);
+            String phone = c.phone != null ? c.phone.trim() : "";
+            sb.append(i + 1).append(". ").append(phone).append("\n");
+        }
+
+        try {
+            android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            android.content.ClipData clip = android.content.ClipData.newPlainText("Sample Kontak Tanpa WA", sb.toString().trim());
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(this, "📋 Berhasil copy " + limit + " nomor ke clipboard!\n(Format: 1. nomer, 2. nomer...)", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Gagal copy: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void deleteNotOnWaContacts() {
