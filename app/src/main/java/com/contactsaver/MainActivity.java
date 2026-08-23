@@ -2225,7 +2225,7 @@ public class MainActivity extends AppCompatActivity {
                 digitCount++;
             }
         }
-        return digitCount >= 6 && digitCount <= 16;
+        return digitCount >= 7 && digitCount <= 15;
     }
 
     private boolean isLikelyName(String val) {
@@ -2461,8 +2461,8 @@ public class MainActivity extends AppCompatActivity {
         // 1. WhatsApp Group JID format (120xxxxxxxx, typically 14-20 digits)
         if (digits.startsWith("120") && len >= 14) return true;
 
-        // 2. Too short (e.g. ID, single digits) or too long (hashes)
-        if (len < 7 || len > 16) return true;
+        // 2. Too short (< 7 digit) or too long (> 15 digit)
+        if (len < 7 || len > 15) return true;
 
         // 3. Repetitive dummy numbers (e.g. 0000000, 11111111)
         if (digits.matches("^(\\d)\\1+$")) return true;
