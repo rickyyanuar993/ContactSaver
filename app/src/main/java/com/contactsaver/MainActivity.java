@@ -71,8 +71,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_PICK_FILE_FOR_DELETE = 1002;
 
     // Stats page
-    private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
-    private Button btnDeleteDuplicates, btnDeleteAll, btnBackupFilterAll, btnBackupFilterUnique, btnBackFromStats, btnApplyFilter, btnViewContacts;
+    private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSuspicious, tvStatsSource, tvStatsStatus;
+    private Button btnDeleteDuplicates, btnDeleteSuspicious, btnDeleteAll, btnBackupFilterAll, btnBackupFilterUnique, btnBackFromStats, btnApplyFilter, btnViewContacts;
     private ProgressBar progressStats;
     private LinearLayout layoutStatsGoogleAccountPicker;
     private Spinner spinnerStatsGoogleAccount;
@@ -85,8 +85,9 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutCheckPhoneResult;
     private TextView tvCheckPhoneResultHeader, tvCheckPhoneResultDetails;
 
-    // Filtered contacts list (for "Lihat Kontak" dialog)
+    // Filtered & Suspicious contacts list (for Stats page dialogs)
     private List<PhoneContact> lastFilteredContacts = new ArrayList<>();
+    private List<PhoneContact> lastSuspiciousContacts = new ArrayList<>();
 
     // Backup page
     private TextView tvBackupInfo, tvBackupStatus;
@@ -179,8 +180,10 @@ public class MainActivity extends AppCompatActivity {
         tvStatsTotal         = findViewById(R.id.tvStatsTotal);
         tvStatsDuplicate     = findViewById(R.id.tvStatsDuplicate);
         tvStatsUnique        = findViewById(R.id.tvStatsUnique);
+        tvStatsSuspicious    = findViewById(R.id.tvStatsSuspicious);
         tvStatsSource        = findViewById(R.id.tvStatsSource);
         btnDeleteDuplicates  = findViewById(R.id.btnDeleteDuplicates);
+        btnDeleteSuspicious  = findViewById(R.id.btnDeleteSuspicious);
         btnDeleteAll         = findViewById(R.id.btnDeleteAll);
         btnBackupFilterAll   = findViewById(R.id.btnBackupFilterAll);
         btnBackupFilterUnique= findViewById(R.id.btnBackupFilterUnique);
@@ -327,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
         btnDeleteDuplicates.setOnClickListener(v -> confirmDeleteDuplicates());
+        btnDeleteSuspicious.setOnClickListener(v -> confirmDeleteSuspicious());
         btnDeleteAll.setOnClickListener(v -> confirmDeleteAll());
         btnBackupFilterAll.setOnClickListener(v -> startBackupFiltered(false));
         btnBackupFilterUnique.setOnClickListener(v -> startBackupFiltered(true));
@@ -880,10 +884,12 @@ public class MainActivity extends AppCompatActivity {
         tvStatsTotal.setText("📱 Total Kontak: -");
         tvStatsUnique.setText("✨ Unik: -");
         tvStatsDuplicate.setText("🔁 Duplikat: -");
+        if (tvStatsSuspicious != null) tvStatsSuspicious.setText("⚠️ Mencurigakan: -");
         tvStatsSource.setText("📂 Sumber Kontak:\n💡 Pilih sumber filter di atas, lalu tap 'Terapkan Filter & Hitung Ulang'.");
         tvStatsStatus.setText("Tap 'Terapkan Filter & Hitung Ulang' untuk memulai.");
         progressStats.setVisibility(View.GONE);
         btnDeleteDuplicates.setEnabled(false);
+        if (btnDeleteSuspicious != null) btnDeleteSuspicious.setEnabled(false);
         btnDeleteAll.setEnabled(false);
         btnBackupFilterAll.setEnabled(false);
         btnBackupFilterUnique.setEnabled(false);
@@ -1003,7 +1009,9 @@ public class MainActivity extends AppCompatActivity {
         tvStatsUnique.setText("⏳");
         tvStatsSource.setText("⏳ Memuat sumber...");
         tvStatsStatus.setText("");
+        if (tvStatsSuspicious != null) tvStatsSuspicious.setText("⏳");
         btnDeleteDuplicates.setEnabled(false);
+        if (btnDeleteSuspicious != null) btnDeleteSuspicious.setEnabled(false);
         btnDeleteAll.setEnabled(false);
         btnBackupFilterAll.setEnabled(false);
         btnBackupFilterUnique.setEnabled(false);
@@ -1062,6 +1070,16 @@ public class MainActivity extends AppCompatActivity {
                 }
                 int uniqueCount = total - dupCount;
 
+                // Detect suspicious contacts
+                List<PhoneContact> suspiciousList = new ArrayList<>();
+                for (PhoneContact c : filtered) {
+                    if (isSuspiciousPhone(c.phone)) {
+                        suspiciousList.add(c);
+                    }
+                }
+                final int fSuspicious = suspiciousList.size();
+                final List<PhoneContact> fSuspiciousList = suspiciousList;
+
                 // Build source map with detailed per-account breakdown
                 Map<String, Integer> srcMap = new LinkedHashMap<>();
                 Map<String, Integer> googleAccountDetails = new LinkedHashMap<>();
@@ -1094,17 +1112,23 @@ public class MainActivity extends AppCompatActivity {
 
                 mainHandler.post(() -> {
                     lastFilteredContacts = fFiltered;
+                    lastSuspiciousContacts = fSuspiciousList;
                     progressStats.setVisibility(View.GONE);
                     tvStatsTotal.setText("📱 Total Kontak (filter): " + fTotal);
                     tvStatsUnique.setText("✨ Unik: " + fUniq + " kontak");
                     tvStatsDuplicate.setText("🔁 Duplikat: " + fDup + " kontak");
+                    if (tvStatsSuspicious != null) {
+                        tvStatsSuspicious.setText("⚠️ Mencurigakan: " + fSuspicious + " kontak");
+                    }
                     tvStatsSource.setText("📂 Sumber Kontak:\n" + fSrc);
                     btnDeleteDuplicates.setEnabled(fDup > 0);
+                    if (btnDeleteSuspicious != null) btnDeleteSuspicious.setEnabled(fSuspicious > 0);
                     btnDeleteAll.setEnabled(fTotal > 0);
                     btnBackupFilterAll.setEnabled(fTotal > 0);
                     btnBackupFilterUnique.setEnabled(fTotal > 0);
                     btnViewContacts.setEnabled(fTotal > 0);
-                    if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat!");
+                    if (fDup == 0 && fSuspicious == 0) tvStatsStatus.setText("✅ Tidak ada duplikat & tidak ada kontak mencurigakan!");
+                    else if (fDup == 0) tvStatsStatus.setText("✅ Tidak ada duplikat (" + fSuspicious + " mencurigakan)");
                     else tvStatsStatus.setText("Siap.");
                 });
             } catch (Exception e) {
@@ -1250,13 +1274,15 @@ public class MainActivity extends AppCompatActivity {
 
                 vh.bar.setBackgroundColor(color);
                 vh.tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
-                vh.tvPhone.setText("📞 " + (c.phone != null ? c.phone : "-"));
+
+                boolean isSusp = isSuspiciousPhone(c.phone);
+                vh.tvPhone.setText((isSusp ? "⚠️ " : "📞 ") + (c.phone != null ? c.phone : "-"));
 
                 String src = resolveSource(c.accountType);
                 String srcDisplay = src;
                 if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty())
                     srcDisplay = src + " (" + c.accountName + ")";
-                vh.tvSrc.setText("📂 " + srcDisplay + "   " + label);
+                vh.tvSrc.setText("📂 " + srcDisplay + (isSusp ? "   ⚠️ MENCURIGAKAN   " : "   ") + label);
                 vh.tvSrc.setTextColor(color);
 
                 return convertView;
@@ -1387,6 +1413,186 @@ public class MainActivity extends AppCompatActivity {
                     progressStats.setVisibility(View.GONE);
                     tvStatsStatus.setText("❌ Error: " + e.getMessage());
                     btnDeleteDuplicates.setEnabled(true);
+                });
+            }
+        });
+    }
+
+    // ─── HAPUS KONTAK MENCURIGAKAN ───────────────────────────────────────────────
+
+    private void confirmDeleteSuspicious() {
+        int count = lastSuspiciousContacts.size();
+        if (count == 0) {
+            Toast.makeText(this, "Tidak ada kontak mencurigakan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+            .setTitle("⚠️ Hapus Kontak Mencurigakan")
+            .setMessage("Ditemukan " + count + " kontak dengan format nomor mencurigakan (ID grup WA 120xxx, <7 digit, >14 digit, dummy 0000/1111).\n\n⚠️ Kontak dari Google Account akan ikut terhapus di server Google.\n\nLanjutkan?")
+            .setPositiveButton("Ya, Hapus (" + count + ")", (d, w) -> deleteSuspiciousContacts())
+            .setNeutralButton("👁️ Lihat Daftar", (d, w) -> showSuspiciousContactListDialog())
+            .setNegativeButton("Batal", null);
+
+        builder.show();
+    }
+
+    private void showSuspiciousContactListDialog() {
+        if (lastSuspiciousContacts.isEmpty()) {
+            Toast.makeText(this, "Tidak ada kontak mencurigakan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        float dp = getResources().getDisplayMetrics().density;
+        int pad = (int)(12 * dp);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(0xFF0F172A);
+
+        TextView header = new TextView(this);
+        header.setText("⚠️ Ditemukan " + lastSuspiciousContacts.size() + " kontak mencurigakan:");
+        header.setTextColor(0xFFF59E0B);
+        header.setTextSize(13);
+        header.setTypeface(null, android.graphics.Typeface.BOLD);
+        header.setPadding(pad, pad, pad, (int)(6 * dp));
+        root.addView(header);
+
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setBackgroundColor(0xFF0F172A);
+        listView.setDivider(null);
+        listView.setDividerHeight((int)(4 * dp));
+
+        android.widget.ArrayAdapter<PhoneContact> adapter = new android.widget.ArrayAdapter<PhoneContact>(
+                this, 0, lastSuspiciousContacts) {
+            @Override
+            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                LinearLayout row;
+                TextView tvName, tvPhone, tvSrc;
+                if (convertView == null) {
+                    row = new LinearLayout(getContext());
+                    row.setOrientation(LinearLayout.VERTICAL);
+                    row.setBackgroundColor(0xFF1E293B);
+                    row.setPadding((int)(12 * dp), (int)(10 * dp), (int)(12 * dp), (int)(10 * dp));
+
+                    tvName = new TextView(getContext());
+                    tvName.setTextSize(14);
+                    tvName.setTextColor(0xFFF8FAFC);
+                    tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    tvPhone = new TextView(getContext());
+                    tvPhone.setTextSize(12);
+                    tvPhone.setTextColor(0xFFF59E0B);
+                    tvPhone.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    tvSrc = new TextView(getContext());
+                    tvSrc.setTextSize(11);
+                    tvSrc.setTextColor(0xFF94A3B8);
+
+                    row.addView(tvName);
+                    row.addView(tvPhone);
+                    row.addView(tvSrc);
+                } else {
+                    row = (LinearLayout) convertView;
+                    tvName = (TextView) row.getChildAt(0);
+                    tvPhone = (TextView) row.getChildAt(1);
+                    tvSrc = (TextView) row.getChildAt(2);
+                }
+
+                PhoneContact c = getItem(position);
+                tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+                tvPhone.setText("⚠️ " + (c.phone != null ? c.phone : "-"));
+
+                String src = resolveSource(c.accountType);
+                String srcDisplay = src;
+                if (src.equals(SRC_GOOGLE) && c.accountName != null && !c.accountName.isEmpty())
+                    srcDisplay = src + " (" + c.accountName + ")";
+                tvSrc.setText("📍 " + srcDisplay);
+
+                return row;
+            }
+        };
+        listView.setAdapter(adapter);
+        root.addView(listView);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("⚠️ Kontak Mencurigakan (" + lastSuspiciousContacts.size() + ")")
+            .setView(root)
+            .setPositiveButton("🗑️ Hapus Semua", (d, w) -> deleteSuspiciousContacts())
+            .setNegativeButton("Tutup", null)
+            .create();
+
+        dialog.setOnShowListener(d -> {
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            listView.setMinimumHeight((int)(screenH * 0.60f));
+        });
+        dialog.show();
+    }
+
+    private void deleteSuspiciousContacts() {
+        if (lastSuspiciousContacts.isEmpty()) return;
+
+        if (btnDeleteSuspicious != null) btnDeleteSuspicious.setEnabled(false);
+        btnDeleteDuplicates.setEnabled(false);
+        btnDeleteAll.setEnabled(false);
+        progressStats.setVisibility(View.VISIBLE);
+        tvStatsStatus.setText("⏳ Menyiapkan penghapusan kontak mencurigakan...");
+
+        final List<PhoneContact> toDelete = new ArrayList<>(lastSuspiciousContacts);
+        executor.execute(() -> {
+            int deleted = 0;
+            try {
+                List<Long> toDeleteIds = new ArrayList<>();
+                for (PhoneContact c : toDelete) {
+                    toDeleteIds.add(c.rawContactId);
+                }
+
+                final int total = toDeleteIds.size();
+                final Uri deleteUri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+                    .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build();
+
+                final int CHUNK = 500;
+                int processed = 0;
+                while (processed < toDeleteIds.size()) {
+                    int end = Math.min(processed + CHUNK, toDeleteIds.size());
+                    List<Long> chunk = toDeleteIds.subList(processed, end);
+
+                    ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+                    for (Long id : chunk) {
+                        ops.add(ContentProviderOperation.newDelete(deleteUri)
+                            .withSelection(ContactsContract.RawContacts._ID + "=?",
+                                new String[]{String.valueOf(id)})
+                            .build());
+                    }
+
+                    try {
+                        android.content.ContentProviderResult[] results =
+                            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+                        for (android.content.ContentProviderResult r : results)
+                            if (r.count != null && r.count > 0) deleted++;
+                    } catch (Exception chunkEx) {
+                        // ignore chunk error
+                    }
+
+                    processed = end;
+                    final int prog = processed, tot = total, del = deleted;
+                    mainHandler.post(() ->
+                        tvStatsStatus.setText("⏳ Menghapus kontak mencurigakan... " + prog + "/" + tot + " (" + del + " berhasil)")
+                    );
+                }
+
+                final int fd = deleted;
+                mainHandler.post(() -> {
+                    progressStats.setVisibility(View.GONE);
+                    tvStatsStatus.setText("✅ Berhasil hapus " + fd + " kontak mencurigakan!");
+                    lastSuspiciousContacts.clear();
+                    calculateStats();
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    progressStats.setVisibility(View.GONE);
+                    tvStatsStatus.setText("❌ Error: " + e.getMessage());
+                    if (btnDeleteSuspicious != null) btnDeleteSuspicious.setEnabled(true);
                 });
             }
         });

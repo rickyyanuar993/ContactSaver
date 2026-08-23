@@ -870,6 +870,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textColor="#FB923C"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:id="@+id/tvStatsSuspicious"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#F59E0B"
                         android:textSize="16sp"/>
                 </LinearLayout>
 
@@ -906,6 +913,17 @@
                     android:textSize="15sp"
                     android:textColor="#FFFFFF"
                     android:backgroundTint="#EF4444"
+                    android:enabled="false"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnDeleteSuspicious"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="⚠️  Hapus Kontak Mencurigakan"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#D97706"
                     android:enabled="false"
                     android:layout_marginBottom="8dp"/>
 
