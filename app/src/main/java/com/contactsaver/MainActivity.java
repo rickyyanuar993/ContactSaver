@@ -219,55 +219,6 @@ public class MainActivity extends AppCompatActivity {
         btnBackFromBackup    = findViewById(R.id.btnBackFromBackup);
         progressBackup       = findViewById(R.id.progressBackup);
 
-        // Settings
-        btnBackFromSettings  = findViewById(R.id.btnBackFromSettings);
-        btnSaveSettings      = findViewById(R.id.btnSaveSettings);
-        tvSettingsStatus     = findViewById(R.id.tvSettingsStatus);
-        spinnerPriority1     = findViewById(R.id.spinnerPriority1);
-        spinnerPriority2     = findViewById(R.id.spinnerPriority2);
-        spinnerPriority3     = findViewById(R.id.spinnerPriority3);
-        spinnerPriority4     = findViewById(R.id.spinnerPriority4);
-        spinnerPriority5     = findViewById(R.id.spinnerPriority5);
-
-        setupSpinners();
-        loadSettings();
-        loadGoogleAccounts();
-
-        // Save destination toggle
-        rgSaveDestination.setOnCheckedChangeListener((group, checkedId) -> {
-            boolean isGoogle = (checkedId == R.id.rbSaveGoogle);
-            layoutGoogleAccountPicker.setVisibility(isGoogle ? View.VISIBLE : View.GONE);
-            tvSaveDestNote.setText(isGoogle
-                ? "⚠️ Kontak akan sync ke Google — pastikan kamu pilih akun yang benar."
-                : "💡 Kontak tersimpan lokal di HP, tidak otomatis sync ke Google.");
-        });
-
-        // CSV Mapping
-        layoutCsvColumnMapping   = findViewById(R.id.layoutCsvColumnMapping);
-        spinnerCsvNameCol        = findViewById(R.id.spinnerCsvNameCol);
-        spinnerCsvPhoneCol       = findViewById(R.id.spinnerCsvPhoneCol);
-        chkCsvHasHeader          = findViewById(R.id.chkCsvHasHeader);
-        btnViewSampleCsv         = findViewById(R.id.btnViewSampleCsv);
-
-        btnViewSampleCsv.setOnClickListener(v -> showSampleCsvDialog());
-
-        android.widget.AdapterView.OnItemSelectedListener csvMappingListener = new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
-                    reapplyCsvColumnMapping();
-                }
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-        };
-        spinnerCsvNameCol.setOnItemSelectedListener(csvMappingListener);
-        spinnerCsvPhoneCol.setOnItemSelectedListener(csvMappingListener);
-        chkCsvHasHeader.setOnCheckedChangeListener((btn, isChecked) -> {
-            if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
-                reapplyCsvColumnMapping();
-            }
-        });
-
         // Smart Filters
         chkExcludeSuspicious = findViewById(R.id.chkExcludeSuspicious);
         spinnerCountryFilter = findViewById(R.id.spinnerCountryFilter);
@@ -297,6 +248,55 @@ public class MainActivity extends AppCompatActivity {
         chkDelFileGoogle.setOnCheckedChangeListener((btn, isChecked) -> {
             if (layoutDelFileGoogleAccountPicker != null)
                 layoutDelFileGoogleAccountPicker.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        // Settings
+        btnBackFromSettings  = findViewById(R.id.btnBackFromSettings);
+        btnSaveSettings      = findViewById(R.id.btnSaveSettings);
+        tvSettingsStatus     = findViewById(R.id.tvSettingsStatus);
+        spinnerPriority1     = findViewById(R.id.spinnerPriority1);
+        spinnerPriority2     = findViewById(R.id.spinnerPriority2);
+        spinnerPriority3     = findViewById(R.id.spinnerPriority3);
+        spinnerPriority4     = findViewById(R.id.spinnerPriority4);
+        spinnerPriority5     = findViewById(R.id.spinnerPriority5);
+
+        // CSV Mapping
+        layoutCsvColumnMapping   = findViewById(R.id.layoutCsvColumnMapping);
+        spinnerCsvNameCol        = findViewById(R.id.spinnerCsvNameCol);
+        spinnerCsvPhoneCol       = findViewById(R.id.spinnerCsvPhoneCol);
+        chkCsvHasHeader          = findViewById(R.id.chkCsvHasHeader);
+        btnViewSampleCsv         = findViewById(R.id.btnViewSampleCsv);
+
+        btnViewSampleCsv.setOnClickListener(v -> showSampleCsvDialog());
+
+        android.widget.AdapterView.OnItemSelectedListener csvMappingListener = new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
+                    reapplyCsvColumnMapping();
+                }
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        };
+        spinnerCsvNameCol.setOnItemSelectedListener(csvMappingListener);
+        spinnerCsvPhoneCol.setOnItemSelectedListener(csvMappingListener);
+        chkCsvHasHeader.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (!isApplyingMapping && rawCsvRows != null && !rawCsvRows.isEmpty()) {
+                reapplyCsvColumnMapping();
+            }
+        });
+
+        setupSpinners();
+        loadSettings();
+        loadGoogleAccounts();
+
+        // Save destination toggle
+        rgSaveDestination.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean isGoogle = (checkedId == R.id.rbSaveGoogle);
+            layoutGoogleAccountPicker.setVisibility(isGoogle ? View.VISIBLE : View.GONE);
+            tvSaveDestNote.setText(isGoogle
+                ? "⚠️ Kontak akan sync ke Google — pastikan kamu pilih akun yang benar."
+                : "💡 Kontak tersimpan lokal di HP, tidak otomatis sync ke Google.");
         });
 
         // Listeners Main
@@ -370,10 +370,23 @@ public class MainActivity extends AppCompatActivity {
         };
         ArrayAdapter<String> countryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, countryOptions) {
             @Override public View getView(int pos, View cv, android.view.ViewGroup parent) {
-                View v = super.getView(pos, cv, parent); ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setTextSize(12); return v;
+                View v = super.getView(pos, cv, parent);
+                if (v instanceof TextView) {
+                    ((TextView)v).setTextColor(0xFFE2E8F0);
+                    ((TextView)v).setTextSize(13);
+                }
+                return v;
             }
             @Override public View getDropDownView(int pos, View cv, android.view.ViewGroup parent) {
-                View v = super.getDropDownView(pos, cv, parent); ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
+                View v = super.getDropDownView(pos, cv, parent);
+                if (v instanceof TextView) {
+                    ((TextView)v).setTextColor(0xFFF8FAFC);
+                    ((TextView)v).setBackgroundColor(0xFF1E293B);
+                    ((TextView)v).setTextSize(14);
+                    int pad = (int)(12 * getResources().getDisplayMetrics().density);
+                    ((TextView)v).setPadding(pad, pad, pad, pad);
+                }
+                return v;
             }
         };
         countryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
