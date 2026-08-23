@@ -45,17 +45,30 @@ public class MainActivity extends AppCompatActivity {
     // Pages
     private LinearLayout layoutMain, layoutStats, layoutBackup, layoutSettings;
 
-    // Main page
-    private Button btnPickFile, btnAnalyze, btnProcess, btnGoStats, btnGoBackup, btnGoSettings, btnPreviewImport;
+    // Main
+    private Button btnPickFile, btnAnalyze, btnProcess, btnPreviewImport, btnGoStats, btnGoBackup, btnGoSettings, btnGoDeleteByFile;
     private TextView tvFileName, tvStatus, tvResult, tvAnalyzeStatus, tvAnalyzeResult, tvSaveDestNote;
     private ProgressBar progressBar, progressAnalyze;
     private LinearLayout layoutResult, layoutAnalyzeResult, layoutGoogleAccountPicker, layoutAnalyzeGoogleAccountPicker;
     private CheckBox chkAnalyzeGoogle, chkAnalyzePhone, chkAnalyzeSim, chkAnalyzeWa, chkAnalyzeWaBiz;
+    private CheckBox chkExcludeSuspicious;
+    private Spinner spinnerCountryFilter;
     private android.widget.RadioGroup rgSaveDestination;
     private android.widget.RadioButton rbSavePhone, rbSaveGoogle;
     private Spinner spinnerGoogleAccount, spinnerAnalyzeGoogleAccount;
     private List<android.accounts.Account> googleAccounts = new ArrayList<>();
     private List<String> googleAccountNames = new ArrayList<>();
+
+    // Delete By File page
+    private LinearLayout layoutDeleteByFile, layoutDeleteByFileResult, layoutDelFileGoogleAccountPicker;
+    private Button btnBackFromDeleteByFile, btnPickFileForDelete, btnAnalyzeFileForDelete, btnPreviewDeleteByFile, btnExecuteDeleteByFile;
+    private TextView tvFileNameForDelete, tvDeleteByFileResult, tvDeleteByFileStatus;
+    private ProgressBar progressDeleteByFile;
+    private Spinner spinnerDelFileGoogleAccount;
+    private CheckBox chkDelFileGoogle, chkDelFilePhone, chkDelFileSim, chkDelFileWa, chkDelFileWaBusiness, chkDelFileOther;
+    private Uri selectedDeleteFileUri = null;
+    private List<PhoneContact> contactsToDeleteByFile = new ArrayList<>();
+    private static final int REQ_PICK_FILE_FOR_DELETE = 1002;
 
     // Stats page
     private TextView tvStatsTotal, tvStatsDuplicate, tvStatsUnique, tvStatsSource, tvStatsStatus;
@@ -240,6 +253,37 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Smart Filters
+        chkExcludeSuspicious = findViewById(R.id.chkExcludeSuspicious);
+        spinnerCountryFilter = findViewById(R.id.spinnerCountryFilter);
+
+        // Delete By File
+        layoutDeleteByFile               = findViewById(R.id.layoutDeleteByFile);
+        layoutDeleteByFileResult         = findViewById(R.id.layoutDeleteByFileResult);
+        layoutDelFileGoogleAccountPicker = findViewById(R.id.layoutDelFileGoogleAccountPicker);
+        btnBackFromDeleteByFile          = findViewById(R.id.btnBackFromDeleteByFile);
+        btnPickFileForDelete             = findViewById(R.id.btnPickFileForDelete);
+        btnAnalyzeFileForDelete          = findViewById(R.id.btnAnalyzeFileForDelete);
+        btnPreviewDeleteByFile           = findViewById(R.id.btnPreviewDeleteByFile);
+        btnExecuteDeleteByFile           = findViewById(R.id.btnExecuteDeleteByFile);
+        btnGoDeleteByFile                = findViewById(R.id.btnGoDeleteByFile);
+        tvFileNameForDelete              = findViewById(R.id.tvFileNameForDelete);
+        tvDeleteByFileResult             = findViewById(R.id.tvDeleteByFileResult);
+        tvDeleteByFileStatus             = findViewById(R.id.tvDeleteByFileStatus);
+        progressDeleteByFile             = findViewById(R.id.progressDeleteByFile);
+        spinnerDelFileGoogleAccount      = findViewById(R.id.spinnerDelFileGoogleAccount);
+        chkDelFileGoogle                 = findViewById(R.id.chkDelFileGoogle);
+        chkDelFilePhone                  = findViewById(R.id.chkDelFilePhone);
+        chkDelFileSim                    = findViewById(R.id.chkDelFileSim);
+        chkDelFileWa                     = findViewById(R.id.chkDelFileWa);
+        chkDelFileWaBusiness             = findViewById(R.id.chkDelFileWaBusiness);
+        chkDelFileOther                  = findViewById(R.id.chkDelFileOther);
+
+        chkDelFileGoogle.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (layoutDelFileGoogleAccountPicker != null)
+                layoutDelFileGoogleAccountPicker.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
         // Listeners Main
         btnPickFile.setOnClickListener(v -> pickFile());
         btnAnalyze.setOnClickListener(v -> startAnalyze());
@@ -248,6 +292,14 @@ public class MainActivity extends AppCompatActivity {
         btnGoStats.setOnClickListener(v -> openStatsPage());
         btnGoBackup.setOnClickListener(v -> openBackupPage());
         btnGoSettings.setOnClickListener(v -> openSettingsPage());
+        btnGoDeleteByFile.setOnClickListener(v -> openDeleteByFilePage());
+
+        // Listeners Delete By File
+        btnBackFromDeleteByFile.setOnClickListener(v -> showPage(layoutMain));
+        btnPickFileForDelete.setOnClickListener(v -> pickFileForDelete());
+        btnAnalyzeFileForDelete.setOnClickListener(v -> analyzeFileForDelete());
+        btnPreviewDeleteByFile.setOnClickListener(v -> showDeleteByFilePreviewDialog());
+        btnExecuteDeleteByFile.setOnClickListener(v -> executeDeleteByFile());
 
         // Listeners Stats
         btnBackFromStats.setOnClickListener(v -> showPage(layoutMain));
@@ -286,6 +338,31 @@ public class MainActivity extends AppCompatActivity {
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         for (Spinner s : spinners) s.setAdapter(adapter);
+
+        // Country Filter
+        String[] countryOptions = {
+            "🌐 Semua Negara (Valid)",
+            "🇮🇩 Hanya Indonesia (+62 / 08)",
+            "🇮🇩 Indonesia (+62) & 🇲🇾 Malaysia (+60)"
+        };
+        ArrayAdapter<String> countryAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, countryOptions) {
+            @Override public View getView(int pos, View cv, android.view.ViewGroup parent) {
+                View v = super.getView(pos, cv, parent); ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setTextSize(12); return v;
+            }
+            @Override public View getDropDownView(int pos, View cv, android.view.ViewGroup parent) {
+                View v = super.getDropDownView(pos, cv, parent); ((TextView)v).setTextColor(0xFFE2E8F0); ((TextView)v).setBackgroundColor(0xFF1E293B); return v;
+            }
+        };
+        countryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        if (spinnerCountryFilter != null) {
+            spinnerCountryFilter.setAdapter(countryAdapter);
+            spinnerCountryFilter.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    if (rawCsvRows != null && !rawCsvRows.isEmpty()) reapplyCsvColumnMapping();
+                }
+                @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            });
+        }
     }
 
     private void loadSettings() {
@@ -341,6 +418,7 @@ public class MainActivity extends AppCompatActivity {
         layoutStats.setVisibility(View.GONE);
         layoutBackup.setVisibility(View.GONE);
         layoutSettings.setVisibility(View.GONE);
+        if (layoutDeleteByFile != null) layoutDeleteByFile.setVisibility(View.GONE);
         page.setVisibility(View.VISIBLE);
     }
 
@@ -348,7 +426,8 @@ public class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         if ((layoutStats != null && layoutStats.getVisibility() == View.VISIBLE)
                 || (layoutBackup != null && layoutBackup.getVisibility() == View.VISIBLE)
-                || (layoutSettings != null && layoutSettings.getVisibility() == View.VISIBLE)) {
+                || (layoutSettings != null && layoutSettings.getVisibility() == View.VISIBLE)
+                || (layoutDeleteByFile != null && layoutDeleteByFile.getVisibility() == View.VISIBLE)) {
             showPage(layoutMain);
         } else {
             new AlertDialog.Builder(this)
@@ -443,6 +522,7 @@ public class MainActivity extends AppCompatActivity {
                 filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 if (spinnerAnalyzeGoogleAccount != null) spinnerAnalyzeGoogleAccount.setAdapter(filterAdapter);
                 if (spinnerStatsGoogleAccount != null) spinnerStatsGoogleAccount.setAdapter(filterAdapter);
+                if (spinnerDelFileGoogleAccount != null) spinnerDelFileGoogleAccount.setAdapter(filterAdapter);
             }
         } catch (Exception e) {
             rbSaveGoogle.setEnabled(false);
@@ -492,6 +572,14 @@ public class MainActivity extends AppCompatActivity {
             layoutResult.setVisibility(View.GONE);
             tvAnalyzeStatus.setText("File dipilih. Tap 'Analisis File' untuk mengecek.");
             tvStatus.setText("Selesaikan langkah 2 dulu.");
+        } else if (req == REQ_PICK_FILE_FOR_DELETE && res == RESULT_OK && data != null) {
+            selectedDeleteFileUri = data.getData();
+            tvFileNameForDelete.setText("📄 " + getFileName(selectedDeleteFileUri));
+            btnAnalyzeFileForDelete.setEnabled(true);
+            btnPreviewDeleteByFile.setEnabled(false);
+            btnExecuteDeleteByFile.setEnabled(false);
+            layoutDeleteByFileResult.setVisibility(View.GONE);
+            tvDeleteByFileStatus.setText("File dipilih. Tap 'Cari Kontak Cocok di HP' untuk menganalisis.");
         }
     }
 
@@ -560,17 +648,43 @@ public class MainActivity extends AppCompatActivity {
                 List<ContactEntry> fileContacts = isVcf
                     ? parseVcf(selectedFileUri) : parseCsv(selectedFileUri);
 
-                mainHandler.post(() -> tvAnalyzeStatus.setText("⏳ Menganalisis duplikat..."));
+                mainHandler.post(() -> tvAnalyzeStatus.setText("⏳ Menganalisis duplikat & validasi..."));
+                final boolean excludeSuspicious = (chkExcludeSuspicious == null || chkExcludeSuspicious.isChecked());
+                final int countryFilterPos = (spinnerCountryFilter != null) ? spinnerCountryFilter.getSelectedItemPosition() : 0;
+
                 List<ContactEntry> toSave = new ArrayList<>();
                 List<ContactEntry> dupList = new ArrayList<>();
+                List<ContactEntry> suspiciousList = new ArrayList<>();
+
                 for (ContactEntry c : fileContacts) {
+                    boolean isSusp = false;
+                    for (String p : c.phones) {
+                        if (isSuspiciousPhone(p) || !matchesCountryFilter(p, countryFilterPos)) {
+                            isSusp = true;
+                            break;
+                        }
+                    }
+
+                    if (isSusp) {
+                        suspiciousList.add(c);
+                        if (excludeSuspicious) {
+                            continue; // Skip saving suspicious numbers
+                        }
+                    }
+
                     boolean dup = false;
-                    for (String p : c.phones) { if (existing.contains(normalizePhone(p))) { dup = true; break; } }
+                    for (String p : c.phones) {
+                        if (existing.contains(normalizePhone(p))) {
+                            dup = true;
+                            break;
+                        }
+                    }
                     if (dup) dupList.add(c); else toSave.add(c);
                 }
 
                 final int total = fileContacts.size();
                 final int dupCount = dupList.size();
+                final int suspCount = suspiciousList.size();
                 final int uniqueCount = toSave.size();
                 analyzedToSave = toSave;
                 allParsedContacts = fileContacts;
@@ -641,13 +755,14 @@ public class MainActivity extends AppCompatActivity {
                         "📝 Format Terdeteksi       : " + detectedFormat + "\n" +
                         "📁 Total kontak di file   : " + total + " kontak\n" +
                         "🔍 Dicek duplikat dari    : " + srcLabel + "\n" +
+                        (suspCount > 0 ? "⚠️ Nomor mencurigakan/aneh : " + suspCount + " kontak (" + (excludeSuspicious ? "Akan di-skip" : "Tetap disimpan") + ")\n" : "") +
                         "🔁 Sudah ada (skip)       : " + dupCount + " kontak\n" +
                         "✨ Baru & unik             : " + uniqueCount + " kontak\n\n" +
                         (uniqueCount > 0
                             ? "➡️ Langkah 3: Pilih tujuan simpan\n   lalu tap 'Simpan Kontak Unik'."
-                            : "ℹ️ Semua kontak di file sudah ada di HP.")
+                            : "ℹ️ Semua kontak valid di file sudah ada di HP.")
                     );
-                    if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru untuk disimpan.");
+                    if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru valid untuk disimpan.");
                     else tvStatus.setText("Siap menyimpan " + uniqueCount + " kontak unik.");
                 });
             } catch (Exception e) {
@@ -1859,6 +1974,8 @@ public class MainActivity extends AppCompatActivity {
         int nameCol = spinnerCsvNameCol != null ? spinnerCsvNameCol.getSelectedItemPosition() : 0;
         int phoneCol = spinnerCsvPhoneCol != null ? spinnerCsvPhoneCol.getSelectedItemPosition() : 1;
         boolean skipHeader = chkCsvHasHeader != null && chkCsvHasHeader.isChecked();
+        final boolean excludeSuspicious = (chkExcludeSuspicious == null || chkExcludeSuspicious.isChecked());
+        final int countryFilterPos = (spinnerCountryFilter != null) ? spinnerCountryFilter.getSelectedItemPosition() : 0;
 
         List<ContactEntry> fileContacts = new ArrayList<>();
         int startRow = skipHeader ? 1 : 0;
@@ -1874,7 +1991,24 @@ public class MainActivity extends AppCompatActivity {
 
         List<ContactEntry> toSave = new ArrayList<>();
         List<ContactEntry> dupList = new ArrayList<>();
+        List<ContactEntry> suspiciousList = new ArrayList<>();
+
         for (ContactEntry c : fileContacts) {
+            boolean isSusp = false;
+            for (String p : c.phones) {
+                if (isSuspiciousPhone(p) || !matchesCountryFilter(p, countryFilterPos)) {
+                    isSusp = true;
+                    break;
+                }
+            }
+
+            if (isSusp) {
+                suspiciousList.add(c);
+                if (excludeSuspicious) {
+                    continue; // Skip saving suspicious numbers
+                }
+            }
+
             boolean dup = false;
             for (String p : c.phones) {
                 if (existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
@@ -1889,6 +2023,7 @@ public class MainActivity extends AppCompatActivity {
         allParsedContacts = fileContacts;
         final int total = fileContacts.size();
         final int dupCount = dupList.size();
+        final int suspCount = suspiciousList.size();
         final int uniqueCount = toSave.size();
 
         btnProcess.setEnabled(uniqueCount > 0);
@@ -1899,13 +2034,14 @@ public class MainActivity extends AppCompatActivity {
             "📝 Format                 : CSV Kustom [Nama: Kolom " + (nameCol + 1) + ", No HP: Kolom " + (phoneCol + 1) + "]\n" +
             "📁 Total kontak di file   : " + total + " kontak\n" +
             "🔍 Dicek duplikat dari    : " + (lastAnalyzeSrcLabel.isEmpty() ? "HP" : lastAnalyzeSrcLabel) + "\n" +
+            (suspCount > 0 ? "⚠️ Nomor mencurigakan/aneh : " + suspCount + " kontak (" + (excludeSuspicious ? "Akan di-skip" : "Tetap disimpan") + ")\n" : "") +
             "🔁 Sudah ada (skip)       : " + dupCount + " kontak\n" +
             "✨ Baru & unik             : " + uniqueCount + " kontak\n\n" +
             (uniqueCount > 0
                 ? "➡️ Langkah 3: Pilih tujuan simpan\n   lalu tap 'Simpan Kontak Unik'."
-                : "ℹ️ Semua kontak di file sudah ada di HP.")
+                : "ℹ️ Semua kontak valid di file sudah ada di HP.")
         );
-        if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru untuk disimpan.");
+        if (uniqueCount == 0) tvStatus.setText("ℹ️ Tidak ada kontak baru valid untuk disimpan.");
         else tvStatus.setText("Siap menyimpan " + uniqueCount + " kontak unik.");
     }
 
@@ -2182,6 +2318,394 @@ public class MainActivity extends AppCompatActivity {
 
     private String safe(String s) { return s == null ? "" : s.replace("\"", "'"); }
 
+    // ─── VALIDASI NOMOR & FILTER NEGARA ──────────────────────────────────────────
+
+    private boolean isSuspiciousPhone(String phone) {
+        if (phone == null) return true;
+        String trimmed = phone.trim();
+        if (trimmed.isEmpty()) return true;
+
+        String digits = trimmed.replaceAll("[^0-9]", "");
+        int len = digits.length();
+
+        // 1. WhatsApp Group JID format (120xxxxxxxx, typically 14-20 digits)
+        if (digits.startsWith("120") && len >= 14) return true;
+
+        // 2. Too short (e.g. ID, single digits) or too long (hashes)
+        if (len < 7 || len > 16) return true;
+
+        // 3. Repetitive dummy numbers (e.g. 0000000, 11111111)
+        if (digits.matches("^(\\d)\\1+$")) return true;
+
+        // 4. Letters inside phone number
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (Character.isLetter(trimmed.charAt(i))) return true;
+        }
+
+        return false;
+    }
+
+    private boolean matchesCountryFilter(String phone, int filterPosition) {
+        if (phone == null) return false;
+        if (filterPosition == 0) return true; // Semua Negara (Valid)
+
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) return false;
+
+        // Mode 1: Indonesia (+62, 62, 08, 021, etc.)
+        boolean isIndo = digits.startsWith("62") || digits.startsWith("08") || digits.startsWith("02") || digits.startsWith("03") || digits.startsWith("04") || digits.startsWith("07") || digits.startsWith("09");
+        if (filterPosition == 1) return isIndo;
+
+        // Mode 2: Indonesia + Malaysia (+60, 60, 01)
+        boolean isMalay = digits.startsWith("60") || (digits.startsWith("01") && digits.length() >= 9 && digits.length() <= 11);
+        if (filterPosition == 2) return isIndo || isMalay;
+
+        return true;
+    }
+
+    private Set<String> extractPhoneNumbersFromFile(Uri uri) throws Exception {
+        Set<String> extracted = new LinkedHashSet<>();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uri), "UTF-8"));
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+
+            // If it looks like a vCard line
+            if (line.toUpperCase().startsWith("TEL")) {
+                int colonIdx = line.indexOf(':');
+                if (colonIdx != -1 && colonIdx + 1 < line.length()) {
+                    String p = line.substring(colonIdx + 1).trim();
+                    String norm = normalizePhone(p);
+                    if (!norm.isEmpty() && !isSuspiciousPhone(p)) extracted.add(norm);
+                }
+                continue;
+            }
+
+            // If CSV or comma/semicolon/tab separated
+            List<String> tokens = parseCsvLine(line);
+            if (tokens.size() > 1) {
+                for (String t : tokens) {
+                    if (isLikelyPhone(t)) {
+                        String norm = normalizePhone(t);
+                        if (!norm.isEmpty() && !isSuspiciousPhone(t)) extracted.add(norm);
+                    }
+                }
+            } else {
+                // Raw line or single phone number
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\+?[0-9\\-\\s()]{7,18}");
+                java.util.regex.Matcher m = p.matcher(line);
+                while (m.find()) {
+                    String raw = m.group().trim();
+                    String norm = normalizePhone(raw);
+                    if (!norm.isEmpty() && !isSuspiciousPhone(raw)) extracted.add(norm);
+                }
+            }
+        }
+        reader.close();
+        return extracted;
+    }
+
+    // ─── HAPUS KONTAK DARI FILE ───────────────────────────────────────────────────
+
+    private void openDeleteByFilePage() {
+        showPage(layoutDeleteByFile);
+        tvFileNameForDelete.setText(selectedDeleteFileUri != null ? "📄 " + getFileName(selectedDeleteFileUri) : "Belum ada file dipilih");
+        tvDeleteByFileStatus.setText(selectedDeleteFileUri != null ? "Siap menganalisis." : "Pilih file kontak terlebih dahulu.");
+        progressDeleteByFile.setVisibility(View.GONE);
+        layoutDeleteByFileResult.setVisibility(View.GONE);
+        btnAnalyzeFileForDelete.setEnabled(selectedDeleteFileUri != null);
+        btnPreviewDeleteByFile.setEnabled(false);
+        btnExecuteDeleteByFile.setEnabled(false);
+    }
+
+    private void pickFileForDelete() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(Intent.createChooser(intent, "Pilih File untuk Dihapus"), REQ_PICK_FILE_FOR_DELETE);
+    }
+
+    private void analyzeFileForDelete() {
+        if (selectedDeleteFileUri == null) {
+            Toast.makeText(this, "Pilih file dulu!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnAnalyzeFileForDelete.setEnabled(false);
+        progressDeleteByFile.setVisibility(View.VISIBLE);
+        layoutDeleteByFileResult.setVisibility(View.GONE);
+        tvDeleteByFileStatus.setText("⏳ Mengekstrak nomor dari file & mencocokkan kontak di HP...");
+
+        final boolean inclGoogle = chkDelFileGoogle.isChecked();
+        final boolean inclPhone  = chkDelFilePhone.isChecked();
+        final boolean inclSim    = chkDelFileSim.isChecked();
+        final boolean inclWa     = chkDelFileWa.isChecked();
+        final boolean inclWaBiz  = chkDelFileWaBusiness.isChecked();
+        final boolean inclOther  = chkDelFileOther.isChecked();
+
+        final int selDelGoogle = (spinnerDelFileGoogleAccount != null && spinnerDelFileGoogleAccount.getSelectedItemPosition() > 0)
+            ? spinnerDelFileGoogleAccount.getSelectedItemPosition() : 0;
+        final String selectedDelGoogleAccountName = (selDelGoogle > 0 && selDelGoogle - 1 < googleAccountNames.size())
+            ? googleAccountNames.get(selDelGoogle - 1) : null;
+
+        executor.execute(() -> {
+            try {
+                // 1. Ekstrak seluruh nomor unik dari file
+                Set<String> filePhones = extractPhoneNumbersFromFile(selectedDeleteFileUri);
+
+                // 2. Ambil kontak di HP sesuai target sumber
+                List<PhoneContact> allContacts = getAllContactsWithSource();
+                List<PhoneContact> targetContacts = new ArrayList<>();
+
+                for (PhoneContact c : allContacts) {
+                    String src = resolveSource(c.accountType);
+                    if (src.equals(SRC_GOOGLE)) {
+                        if (!inclGoogle) continue;
+                        if (selectedDelGoogleAccountName != null && (c.accountName == null || !c.accountName.equalsIgnoreCase(selectedDelGoogleAccountName))) continue;
+                    }
+                    if (src.equals(SRC_PHONE)   && !inclPhone)  continue;
+                    if (src.equals(SRC_SIM)     && !inclSim)    continue;
+                    if (src.equals(SRC_WA)      && !inclWa)     continue;
+                    if (src.equals(SRC_WA_BIZ)  && !inclWaBiz)  continue;
+                    if (src.equals(SRC_OTHER)   && !inclOther)  continue;
+                    targetContacts.add(c);
+                }
+
+                // 3. Match contacts
+                List<PhoneContact> matched = new ArrayList<>();
+                Set<String> matchedPhones = new HashSet<>();
+                for (PhoneContact c : targetContacts) {
+                    String norm = normalizePhone(c.phone);
+                    if (!norm.isEmpty() && filePhones.contains(norm)) {
+                        matched.add(c);
+                        matchedPhones.add(norm);
+                    }
+                }
+
+                final int totalFileNumbers = filePhones.size();
+                final int totalMatched = matched.size();
+                final int notFoundCount = Math.max(0, totalFileNumbers - matchedPhones.size());
+                final List<PhoneContact> fMatched = matched;
+
+                mainHandler.post(() -> {
+                    contactsToDeleteByFile = fMatched;
+                    progressDeleteByFile.setVisibility(View.GONE);
+                    btnAnalyzeFileForDelete.setEnabled(true);
+                    layoutDeleteByFileResult.setVisibility(View.VISIBLE);
+                    btnPreviewDeleteByFile.setEnabled(totalMatched > 0);
+                    btnExecuteDeleteByFile.setEnabled(totalMatched > 0);
+
+                    tvDeleteByFileResult.setText(
+                        "📊 HASIL ANALISIS HAPUS VIA FILE\n\n" +
+                        "📁 File Sumber            : " + getFileName(selectedDeleteFileUri) + "\n" +
+                        "📞 Total nomor unik file : " + totalFileNumbers + " nomor\n" +
+                        "🔍 Kontak cocok di HP    : " + totalMatched + " kontak (DAPAT DIHAPUS)\n" +
+                        "ℹ️ Tidak ada di HP       : " + notFoundCount + " nomor\n\n" +
+                        (totalMatched > 0
+                            ? "⚠️ Tap 'Hapus Kontak Cocok Sekarang' untuk mengeksekusi penghapusan."
+                            : "✅ Tidak ditemukan kontak yang cocok di HP untuk dihapus.")
+                    );
+                    tvDeleteByFileStatus.setText(totalMatched > 0 ? "Ditemukan " + totalMatched + " kontak cocok siap dihapus." : "Tidak ada kontak cocok.");
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    progressDeleteByFile.setVisibility(View.GONE);
+                    btnAnalyzeFileForDelete.setEnabled(true);
+                    tvDeleteByFileStatus.setText("❌ Error: " + e.getMessage());
+                });
+            }
+        });
+    }
+
+    private void showDeleteByFilePreviewDialog() {
+        if (contactsToDeleteByFile.isEmpty()) {
+            Toast.makeText(this, "Tidak ada kontak untuk ditampilkan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        float dp = getResources().getDisplayMetrics().density;
+        int pad = (int)(12 * dp);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setBackgroundColor(0xFF0F172A);
+        header.setPadding(pad, pad, pad, pad);
+
+        TextView tvHdr = new TextView(this);
+        tvHdr.setText("🔴 " + contactsToDeleteByFile.size() + " Kontak di HP Cocok dengan Nomor di File");
+        tvHdr.setTextColor(0xFFEF4444);
+        tvHdr.setTextSize(12);
+        tvHdr.setTypeface(null, android.graphics.Typeface.BOLD);
+        header.addView(tvHdr);
+
+        android.widget.ListView listView = new android.widget.ListView(this);
+        listView.setBackgroundColor(0xFF0F172A);
+        listView.setDivider(null);
+        listView.setDividerHeight((int)(4 * dp));
+
+        android.widget.ArrayAdapter<PhoneContact> adapter = new android.widget.ArrayAdapter<PhoneContact>(
+                this, 0, contactsToDeleteByFile) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                ViewHolder vh;
+                if (convertView == null) {
+                    LinearLayout rowOuter = new LinearLayout(getContext());
+                    rowOuter.setOrientation(LinearLayout.HORIZONTAL);
+
+                    View bar = new View(getContext());
+                    bar.setLayoutParams(new LinearLayout.LayoutParams((int)(4*dp), LinearLayout.LayoutParams.MATCH_PARENT));
+                    bar.setBackgroundColor(0xFFEF4444);
+
+                    LinearLayout inner = new LinearLayout(getContext());
+                    inner.setOrientation(LinearLayout.VERTICAL);
+                    inner.setBackgroundColor(0xFF1E293B);
+                    inner.setPadding((int)(10*dp), (int)(8*dp), (int)(10*dp), (int)(8*dp));
+                    inner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+                    TextView tvName  = new TextView(getContext());
+                    tvName.setTextSize(13); tvName.setTextColor(0xFFE2E8F0);
+                    tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    TextView tvPhone = new TextView(getContext());
+                    tvPhone.setTextSize(11); tvPhone.setTextColor(0xFF94A3B8);
+
+                    TextView tvSrc   = new TextView(getContext());
+                    tvSrc.setTextSize(10); tvSrc.setTextColor(0xFFEF4444);
+
+                    inner.addView(tvName);
+                    inner.addView(tvPhone);
+                    inner.addView(tvSrc);
+
+                    rowOuter.addView(bar);
+                    rowOuter.addView(inner);
+                    convertView = rowOuter;
+
+                    vh = new ViewHolder();
+                    vh.bar = bar; vh.tvName = tvName; vh.tvPhone = tvPhone; vh.tvSrc = tvSrc;
+                    convertView.setTag(vh);
+                } else {
+                    vh = (ViewHolder) convertView.getTag();
+                }
+
+                PhoneContact c = getItem(position);
+                if (c != null) {
+                    vh.tvName.setText(c.name != null && !c.name.isEmpty() ? c.name : "(Tanpa Nama)");
+                    vh.tvPhone.setText("📞 " + (c.phone != null ? c.phone : "-"));
+                    String src = resolveSource(c.accountType);
+                    if (src.equals(SRC_GOOGLE) && c.accountName != null) {
+                        vh.tvSrc.setText("🔴 AKAN DIHAPUS — Google (" + c.accountName + ")");
+                    } else {
+                        vh.tvSrc.setText("🔴 AKAN DIHAPUS — " + src);
+                    }
+                }
+                return convertView;
+            }
+        };
+
+        listView.setAdapter(adapter);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(header);
+        root.addView(listView);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("👁️ Preview Kontak Akan Dihapus (" + contactsToDeleteByFile.size() + " Kontak)")
+            .setView(root)
+            .setPositiveButton("Tutup", null)
+            .create();
+
+        dialog.setOnShowListener(d -> {
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            listView.setMinimumHeight((int)(screenH * 0.65f));
+        });
+        dialog.show();
+    }
+
+    private void executeDeleteByFile() {
+        if (contactsToDeleteByFile.isEmpty()) {
+            Toast.makeText(this, "Tidak ada kontak untuk dihapus.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final int totalDel = contactsToDeleteByFile.size();
+        new AlertDialog.Builder(this)
+            .setTitle("⚠️ Konfirmasi Hapus " + totalDel + " Kontak")
+            .setMessage("Apakah Anda YAKIN ingin MENGHAPUS " + totalDel + " kontak di HP yang nomornya cocok dengan file ini?\n\nKontak akan dihapus permanen dari HP.")
+            .setPositiveButton("🗑️ Ya, Hapus Sekarang", (d, w) -> {
+                btnExecuteDeleteByFile.setEnabled(false);
+                btnPreviewDeleteByFile.setEnabled(false);
+                progressDeleteByFile.setVisibility(View.VISIBLE);
+                tvDeleteByFileStatus.setText("⏳ Sedang menghapus " + totalDel + " kontak...");
+
+                executor.execute(() -> {
+                    try {
+                        int deleted = deleteContactsBatch(contactsToDeleteByFile);
+                        mainHandler.post(() -> {
+                            progressDeleteByFile.setVisibility(View.GONE);
+                            contactsToDeleteByFile.clear();
+                            layoutDeleteByFileResult.setVisibility(View.GONE);
+                            tvDeleteByFileStatus.setText("✅ Berhasil menghapus " + deleted + " kontak dari HP!");
+                            Toast.makeText(MainActivity.this, "✅ " + deleted + " kontak berhasil dihapus!", Toast.LENGTH_LONG).show();
+                        });
+                    } catch (Exception e) {
+                        mainHandler.post(() -> {
+                            progressDeleteByFile.setVisibility(View.GONE);
+                            btnExecuteDeleteByFile.setEnabled(true);
+                            btnPreviewDeleteByFile.setEnabled(true);
+                            tvDeleteByFileStatus.setText("❌ Gagal menghapus: " + e.getMessage());
+                        });
+                    }
+                });
+            })
+            .setNegativeButton("Batal", null)
+            .show();
+    }
+
+    private int deleteContactsBatch(List<PhoneContact> contacts) {
+        int deleted = 0;
+        final int CHUNK = 500;
+        final int total = contacts.size();
+        int processed = 0;
+
+        while (processed < total) {
+            int end = Math.min(processed + CHUNK, total);
+            List<PhoneContact> chunk = contacts.subList(processed, end);
+            ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+
+            for (PhoneContact c : chunk) {
+                ops.add(ContentProviderOperation.newDelete(
+                    ContactsContract.RawContacts.CONTENT_URI.buildUpon()
+                        .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
+                        .build())
+                    .withSelection(ContactsContract.RawContacts._ID + "=?",
+                        new String[]{String.valueOf(c.rawContactId)})
+                    .build());
+            }
+
+            try {
+                getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+                deleted += chunk.size();
+            } catch (Exception e) {
+                // Fallback: satu per satu
+                for (PhoneContact c : chunk) {
+                    try {
+                        getContentResolver().delete(
+                            ContactsContract.RawContacts.CONTENT_URI,
+                            ContactsContract.RawContacts._ID + "=?",
+                            new String[]{String.valueOf(c.rawContactId)}
+                        );
+                        deleted++;
+                    } catch (Exception ignored) {}
+                }
+            }
+            processed = end;
+        }
+        return deleted;
+    }
+
     private void showImportPreviewDialog() {
         if (allParsedContacts == null || allParsedContacts.isEmpty()) {
             Toast.makeText(this, "Tidak ada data untuk di-preview.", Toast.LENGTH_SHORT).show();
@@ -2191,9 +2715,11 @@ public class MainActivity extends AppCompatActivity {
         btnPreviewImport.setEnabled(false);
         Toast.makeText(this, "Menyiapkan preview...", Toast.LENGTH_SHORT).show();
 
+        final int countryFilterPos = (spinnerCountryFilter != null) ? spinnerCountryFilter.getSelectedItemPosition() : 0;
+
         executor.execute(() -> {
             List<ImportPreviewItem> previewList = new ArrayList<>(allParsedContacts.size());
-            int countNew = 0, countDup = 0;
+            int countNew = 0, countDup = 0, countSuspicious = 0;
 
             for (ContactEntry c : allParsedContacts) {
                 if (c == null) continue;
@@ -2202,30 +2728,50 @@ public class MainActivity extends AppCompatActivity {
 
                 StringBuilder sbPhones = new StringBuilder();
                 boolean isDup = false;
+                boolean isSusp = false;
+
                 for (String p : c.phones) {
                     if (p != null && !p.trim().isEmpty()) {
                         if (sbPhones.length() > 0) sbPhones.append(", ");
                         sbPhones.append(p.trim());
+
+                        if (isSuspiciousPhone(p) || !matchesCountryFilter(p, countryFilterPos)) {
+                            isSusp = true;
+                        }
                         if (!isDup && existingPhonesForPreview != null && existingPhonesForPreview.contains(normalizePhone(p))) {
                             isDup = true;
                         }
                     }
                 }
                 item.phoneDisplay = sbPhones.length() > 0 ? "📞 " + sbPhones.toString() : "📞 -";
-                item.isDuplicate = isDup;
 
-                if (isDup) countDup++; else countNew++;
+                if (isSusp) {
+                    item.status = 2;
+                    item.statusLabel = "⚠️ MENCURIGAKAN (ID Grup / Format Aneh)";
+                    countSuspicious++;
+                } else if (isDup) {
+                    item.status = 1;
+                    item.statusLabel = "🔴 DUPLIKAT (Skip)";
+                    countDup++;
+                } else {
+                    item.status = 0;
+                    item.statusLabel = "🟢 BARU (Simpan)";
+                    countNew++;
+                }
                 previewList.add(item);
             }
 
-            // Blazing-fast O(1) sort: Baru (false) first, then alphabetical by name
+            // Sort: Mencurigakan (status=2) PINNED AT TOP, then Baru (0), then Duplikat (1)
             previewList.sort((a, b) -> {
-                if (a.isDuplicate != b.isDuplicate) return a.isDuplicate ? 1 : -1;
+                int rankA = (a.status == 2) ? 0 : (a.status == 0 ? 1 : 2);
+                int rankB = (b.status == 2) ? 0 : (b.status == 0 ? 1 : 2);
+                if (rankA != rankB) return Integer.compare(rankA, rankB);
                 return a.name.compareToIgnoreCase(b.name);
             });
 
             final int fCountNew = countNew;
             final int fCountDup = countDup;
+            final int fCountSusp = countSuspicious;
             final List<ImportPreviewItem> fPreviewList = previewList;
 
             mainHandler.post(() -> {
@@ -2242,12 +2788,13 @@ public class MainActivity extends AppCompatActivity {
 
                 LinearLayout legendRow = new LinearLayout(MainActivity.this);
                 legendRow.setOrientation(LinearLayout.HORIZONTAL);
-                addLegendItem(legendRow, "🟢 Baru (Akan Simpan)  ", 0xFF34D399);
-                addLegendItem(legendRow, "🔴 Duplikat (Akan Skip)", 0xFFEF4444);
+                addLegendItem(legendRow, "⚠️ Mencurigakan  ", 0xFFF59E0B);
+                addLegendItem(legendRow, "🟢 Baru  ", 0xFF34D399);
+                addLegendItem(legendRow, "🔴 Duplikat", 0xFFEF4444);
                 header.addView(legendRow);
 
                 TextView tvCount = new TextView(MainActivity.this);
-                tvCount.setText("Total: " + fPreviewList.size() + " kontak  |  🟢 " + fCountNew + " Baru  |  🔴 " + fCountDup + " Duplikat");
+                tvCount.setText("Total: " + fPreviewList.size() + " kontak  |  ⚠️ " + fCountSusp + " Mencurigakan  |  🟢 " + fCountNew + " Baru  |  🔴 " + fCountDup + " Duplikat");
                 tvCount.setTextColor(0xFF64748B);
                 tvCount.setTextSize(11);
                 tvCount.setPadding(0, (int)(6*dp), 0, 0);
@@ -2304,13 +2851,15 @@ public class MainActivity extends AppCompatActivity {
 
                         ImportPreviewItem item = getItem(position);
                         if (item != null) {
-                            int color = item.isDuplicate ? 0xFFEF4444 : 0xFF34D399;
-                            String label = item.isDuplicate ? "🔴 DUPLIKAT (Skip)" : "🟢 BARU (Simpan)";
+                            int color;
+                            if (item.status == 2) color = 0xFFF59E0B;
+                            else if (item.status == 1) color = 0xFFEF4444;
+                            else color = 0xFF34D399;
 
                             vh.bar.setBackgroundColor(color);
                             vh.tvName.setText(item.name);
                             vh.tvPhone.setText(item.phoneDisplay);
-                            vh.tvSrc.setText(label);
+                            vh.tvSrc.setText(item.statusLabel);
                             vh.tvSrc.setTextColor(color);
                         }
 
@@ -2343,7 +2892,8 @@ public class MainActivity extends AppCompatActivity {
     static class ImportPreviewItem {
         String name;
         String phoneDisplay;
-        boolean isDuplicate;
+        int status; // 0 = BARU, 1 = DUPLIKAT, 2 = MENCURIGAKAN
+        String statusLabel;
     }
 
     static class ContactEntry {

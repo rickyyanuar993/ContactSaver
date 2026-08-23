@@ -45,7 +45,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="28dp">
+                    android:layout_marginBottom="8dp">
 
                     <Button
                         android:id="@+id/btnGoStats"
@@ -57,6 +57,23 @@
                         android:textColor="#0F172A"
                         android:backgroundTint="#818CF8"
                         android:layout_marginEnd="6dp"/>
+
+                    <Button
+                        android:id="@+id/btnGoDeleteByFile"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="🗑️ Hapus via File"
+                        android:textSize="12sp"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#F43F5E"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="24dp">
 
                     <Button
                         android:id="@+id/btnGoBackup"
@@ -448,6 +465,69 @@
                         android:textSize="11sp"
                         android:lineSpacingMultiplier="1.4"
                         android:layout_marginTop="8dp"/>
+                </LinearLayout>
+
+                <!-- Smart Validation & Country Filter Card -->
+                <LinearLayout
+                    android:id="@+id/layoutSmartFilters"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="14dp"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🛡️ FILTER &amp; VALIDASI NOMOR CERDAS:"
+                        android:textColor="#38BDF8"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <CheckBox
+                            android:id="@+id/chkExcludeSuspicious"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:buttonTint="#F59E0B"/>
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🚫 Abaikan nomor mencurigakan (ID Grup 120xxx / Format Aneh)"
+                            android:textColor="#FDE68A"
+                            android:textSize="12sp"
+                            android:layout_marginStart="4dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="100dp"
+                            android:layout_height="wrap_content"
+                            android:text="🌍 Filter Negara:"
+                            android:textColor="#94A3B8"
+                            android:textSize="12sp"
+                            android:textStyle="bold"/>
+                        <Spinner
+                            android:id="@+id/spinnerCountryFilter"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:popupBackground="#1E293B"/>
+                    </LinearLayout>
                 </LinearLayout>
 
                 <Button
@@ -1054,6 +1134,255 @@
                         android:textSize="13sp"
                         android:lineSpacingMultiplier="1.5"/>
                 </LinearLayout>
+
+    <!-- ═══ HALAMAN HAPUS KONTAK DARI FILE ═══ -->
+    <LinearLayout
+        android:id="@+id/layoutDeleteByFile"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Header Nav -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+                    <Button
+                        android:id="@+id/btnBackFromDeleteByFile"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="← Kembali"
+                        android:textSize="12sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#64748B"
+                        android:layout_marginEnd="12dp"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🗑️ Hapus via File"
+                        android:textSize="22sp"
+                        android:textColor="#F43F5E"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Cari dan hapus kontak di HP yang nomornya ada di dalam file CSV, TXT, atau VCF secara massal dan otomatis."
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.4"
+                    android:layout_marginBottom="20dp"/>
+
+                <!-- LANGKAH 1 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 1 — PILIH FILE YANG INGIN DIHAPUS"
+                    android:textSize="11sp"
+                    android:textColor="#F43F5E"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnPickFileForDelete"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:text="📂 Pilih File (CSV / TXT / VCF)"
+                    android:textSize="14sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#F43F5E"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvFileNameForDelete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Belum ada file dipilih"
+                    android:textColor="#64748B"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- LANGKAH 2 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 2 — TARGET SUMBER KONTAK DI HP"
+                    android:textSize="11sp"
+                    android:textColor="#818CF8"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="14dp"
+                    android:layout_marginBottom="20dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🎯 Cari kontak yang cocok pada akun:"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkDelFileGoogle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#34D399"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Google Account" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layoutDelFileGoogleAccountPicker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginStart="28dp"
+                        android:layout_marginBottom="10dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Pilih Akun: "
+                            android:textColor="#94A3B8"
+                            android:textSize="12sp"/>
+                        <Spinner
+                            android:id="@+id/spinnerDelFileGoogleAccount"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:background="#0F172A"
+                            android:popupBackground="#1E293B"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkDelFilePhone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#38BDF8"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Memori HP (Lokal)" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkDelFileSim" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#F59E0B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Kartu SIM" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkDelFileWa" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#10B981"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="6dp">
+                        <CheckBox android:id="@+id/chkDelFileWaBusiness" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:buttonTint="#059669"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp Business" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                        <CheckBox android:id="@+id/chkDelFileOther" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:buttonTint="#64748B"/>
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Lainnya / Tidak Dikenal" android:textColor="#E2E8F0" android:textSize="13sp" android:layout_marginStart="6dp"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- LANGKAH 3 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LANGKAH 3 — CARI &amp; EKSEKUSI HAPUS"
+                    android:textSize="11sp"
+                    android:textColor="#34D399"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/btnAnalyzeFileForDelete"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="🔍 Cari Kontak Cocok di HP"
+                    android:textSize="14sp"
+                    android:textColor="#0F172A"
+                    android:backgroundTint="#38BDF8"
+                    android:enabled="false"
+                    android:layout_marginBottom="12dp"/>
+
+                <ProgressBar
+                    android:id="@+id/progressDeleteByFile"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:indeterminateTint="#F43F5E"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp"/>
+
+                <!-- Hasil Analisis Hapus -->
+                <LinearLayout
+                    android:id="@+id/layoutDeleteByFileResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="#1E293B"
+                    android:padding="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvDeleteByFileResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="#E2E8F0"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:lineSpacingMultiplier="1.5"
+                        android:layout_marginBottom="12dp"/>
+
+                    <Button
+                        android:id="@+id/btnPreviewDeleteByFile"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="👁️ Lihat Kontak yang Akan Dihapus"
+                        android:textSize="13sp"
+                        android:textColor="#0F172A"
+                        android:backgroundTint="#F59E0B"
+                        android:layout_marginBottom="8dp"/>
+
+                    <Button
+                        android:id="@+id/btnExecuteDeleteByFile"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:text="🗑️ Hapus Kontak Cocok Sekarang"
+                        android:textSize="14sp"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#EF4444"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDeleteByFileStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Pilih file kontak terlebih dahulu."
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="40dp"/>
 
             </LinearLayout>
         </ScrollView>
