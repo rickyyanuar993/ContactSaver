@@ -1580,26 +1580,12 @@ public class MainActivity extends AppCompatActivity {
         boolean fellBackToAutoDetect = false;
         int autoPi = -1, autoNi = -1;
         if (phoneIndices.isEmpty() || nameIndices.isEmpty()) {
-            int[] phoneScores = new int[numCols];
-            int[] nameScores = new int[numCols];
-            int scanLimit = Math.min(allRows.size(), 15);
-            for (int i = 0; i < scanLimit; i++) {
-                List<String> row = allRows.get(i);
-                for (int j = 0; j < row.size(); j++) {
-                    String val = row.get(j);
-                    if (isLikelyPhone(val)) {
-                        phoneScores[j]++;
-                    } else if (isLikelyName(val)) {
-                        nameScores[j]++;
-                    }
-                }
-            }
-
             int bestPi = -1;
             int maxPhoneScore = -1;
             for (int j = 0; j < numCols; j++) {
-                if (phoneScores[j] > maxPhoneScore) {
-                    maxPhoneScore = phoneScores[j];
+                int score = calculateColumnPhoneScore(allRows, j);
+                if (score > maxPhoneScore) {
+                    maxPhoneScore = score;
                     bestPi = j;
                 }
             }
@@ -1608,15 +1594,16 @@ public class MainActivity extends AppCompatActivity {
             int maxNameScore = -1;
             for (int j = 0; j < numCols; j++) {
                 if (j == bestPi) continue;
-                if (nameScores[j] > maxNameScore) {
-                    maxNameScore = nameScores[j];
+                int score = calculateColumnNameScore(allRows, j, bestPi);
+                if (score > maxNameScore) {
+                    maxNameScore = score;
                     bestNi = j;
                 }
             }
 
             // Fallback defaults
-            if (bestPi == -1 || maxPhoneScore == 0) bestPi = 1;
-            if (bestNi == -1 || maxNameScore == 0) bestNi = (bestPi == 0) ? 1 : 0;
+            if (bestPi == -1 || maxPhoneScore == 0) bestPi = (numCols > 1 ? 1 : 0);
+            if (bestNi == -1 || maxNameScore == 0) bestNi = (bestPi == 0 && numCols > 1) ? 1 : 0;
 
             autoPi = bestPi;
             autoNi = bestNi;
@@ -1988,6 +1975,111 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return hasLetter;
+    }
+
+    private int calculateColumnPhoneScore(List<List<String>> rows, int colIdx) {
+        if (rows == null || rows.isEmpty()) return 0;
+        int score = 0;
+        int validPhones = 0;
+        int totalChecked = 0;
+        int startRow = (rows.size() > 1) ? 1 : 0;
+        int limit = Math.min(rows.size(), 30);
+
+        for (int r = startRow; r < limit; r++) {
+            List<String> row = rows.get(r);
+            if (colIdx >= row.size()) continue;
+            String val = row.get(colIdx).trim();
+            if (val.isEmpty()) continue;
+            totalChecked++;
+
+            // Count digits and check formatting
+            String cleaned = val.replaceAll("[^0-9+]", "");
+            int digitCount = 0;
+            for (int k = 0; k < cleaned.length(); k++) {
+                if (Character.isDigit(cleaned.charAt(k))) digitCount++;
+            }
+
+            if (digitCount >= 8 && digitCount <= 15) {
+                validPhones++;
+                score += 10;
+                // High confidence phone prefixes (Indonesian & International)
+                if (cleaned.startsWith("+628") || cleaned.startsWith("628") || cleaned.startsWith("08")) {
+                    score += 20;
+                } else if (cleaned.startsWith("+") || cleaned.startsWith("0")) {
+                    score += 10;
+                }
+                // Pure numeric / clean phone bonus
+                if (val.matches("^[0-9+\\s\\-().]+$")) {
+                    score += 10;
+                }
+            } else if (digitCount > 0 && (digitCount < 6 || digitCount > 18)) {
+                // Penalize IDs, zip codes, timestamps
+                score -= 20;
+            }
+        }
+
+        if (totalChecked > 0 && (float) validPhones / totalChecked >= 0.75f) {
+            score += 100; // Overwhelmingly valid phone column
+        }
+        return Math.max(0, score);
+    }
+
+    private int calculateColumnNameScore(List<List<String>> rows, int colIdx, int bestPhoneCol) {
+        if (rows == null || rows.isEmpty() || colIdx == bestPhoneCol) return 0;
+        int score = 0;
+        int totalChecked = 0;
+        int azkaOccurrences = 0;
+        Set<String> distinctValues = new HashSet<>();
+        int startRow = (rows.size() > 1) ? 1 : 0;
+        int limit = Math.min(rows.size(), 30);
+
+        for (int r = startRow; r < limit; r++) {
+            List<String> row = rows.get(r);
+            if (colIdx >= row.size()) continue;
+            String val = row.get(colIdx).trim();
+            if (val.isEmpty()) continue;
+            totalChecked++;
+            distinctValues.add(val.toLowerCase());
+
+            // Check for AZKA keyword (case-insensitive, all variations)
+            if (val.toLowerCase().contains("azka")) {
+                azkaOccurrences++;
+            }
+
+            // Check if looks like a name
+            int letterCount = 0;
+            for (int k = 0; k < val.length(); k++) {
+                if (Character.isLetter(val.charAt(k))) letterCount++;
+            }
+
+            if (letterCount >= 2) {
+                score += 10;
+                // Multi-word name bonus (e.g. "Budi Santoso", "Andi Wijaya")
+                if (val.contains(" ") && val.length() >= 5) {
+                    score += 10;
+                }
+                // Penalize email, URL, or numbers
+                if (val.contains("@") || val.contains("http") || val.contains(".com")) {
+                    score -= 30;
+                }
+            } else if (isLikelyPhone(val)) {
+                score -= 30;
+            }
+        }
+
+        // Heavy penalty if column repeatedly contains "azka" across samples
+        if (azkaOccurrences > 0) {
+            score -= (azkaOccurrences * 35);
+        }
+
+        // Check diversity: if multiple rows all have the same 1 or 2 static values, it's a fixed tag/category, NOT names!
+        if (totalChecked > 3 && distinctValues.size() <= 2) {
+            score -= 100; // Constant tag column penalty
+        } else if (totalChecked > 3 && (float) distinctValues.size() / totalChecked >= 0.7f) {
+            score += 60; // High uniqueness/diversity bonus (true contact names)
+        }
+
+        return Math.max(0, score);
     }
 
     private int saveContactsBatch(List<ContactEntry> contacts, String accountType, String accountName) {
